@@ -28,6 +28,14 @@ async def get_user_by_telegram_id(telegram_id: str, db: AsyncSession = Depends(g
         raise HTTPException(status_code=404, detail="User not found")
     return user
   
+@router.get("/by-id/{id}", response_model=UserOut)
+async def get_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.id == id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+  
 @router.get("/", response_model=list[UserOut])
 async def get_all_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
@@ -35,12 +43,18 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
     return users
   
 @router.put("/{id}", response_model=UserOut)
-async def update_user(id: int, user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def update_user(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.id == id))
-    user = result.scalar_one_or_none()
-    if not user:
+    db_user = result.scalar_one_or_none()
+    if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
-    user.telegram_id = user.telegram_id
-    user.name = user.name
-    user.gender = user.gender
-    user.age = user.age
+    
+    # Update user fields
+    db_user.telegram_id = user_data.telegram_id
+    db_user.name = user_data.name
+    db_user.gender = user_data.gender
+    db_user.age = user_data.age
+    
+    await db.commit()
+    await db.refresh(db_user)
+    return db_user
