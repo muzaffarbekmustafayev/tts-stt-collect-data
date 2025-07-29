@@ -1,0 +1,6 @@
+{
+  "verbose": true,
+  "exec": "python bot.py",
+  "ignore": ["*.json", "*.log", "bot.log", "recordings",  "static"]
+  
+}
