@@ -17,4 +17,4 @@ async def run_bot():
         await application.updater.start_polling()
         logger.info("🤖 Telegram bot is running.")
     except Exception as e:
-        logger.exception("❌ Telegram botni ishga tushirishda xatolik yuz berdi: %s", e)
+        logger.exception("❌ Error starting bot: %s", e)
