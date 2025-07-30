@@ -6,10 +6,12 @@ from app.schemas.user import UserCreate, UserOut
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.core.logging import get_logger
+from app.services.user_service import get_user_by_userId, get_user_by_telegramId
 
 logger = get_logger("api.user")
 router = APIRouter(prefix="/users", tags=["Users"])
 
+# add user
 @router.post("/", response_model=UserOut)
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     new_user = User(**user.model_dump())
@@ -23,26 +25,19 @@ async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
         await db.rollback()
         raise HTTPException(status_code=400, detail="User already exists")
 
+# get user by telegram id
 @router.get("/{telegram_id}", response_model=UserOut)
 async def get_user_by_telegram_id(telegram_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.telegram_id == telegram_id))
-    user = result.scalar_one_or_none()
-    if not user:
-        logger.warning(f"User not found with telegram_id: {telegram_id}")
-        raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User found with ID: {user.id}")
+    user = await get_user_by_telegramId(telegram_id, db)
     return user
   
+# get user by id
 @router.get("/by-id/{id}", response_model=UserOut)
 async def get_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == id))
-    user = result.scalar_one_or_none()
-    if not user:
-        logger.warning(f"User not found with ID: {id}")
-        raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User found with telegram_id: {user.telegram_id}")
+    user = await get_user_by_userId(id, db)
     return user
   
+# get all users
 @router.get("/", response_model=list[UserOut])
 async def get_all_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User))
@@ -50,13 +45,10 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
     logger.info(f"Found {len(users)} users")
     return users
   
+# update user
 @router.put("/{id}", response_model=UserOut)
 async def update_user(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.id == id))
-    db_user = result.scalar_one_or_none()
-    if not db_user:
-        logger.warning(f"User not found with ID: {id}")
-        raise HTTPException(status_code=404, detail="User not found")
+    db_user = await get_user_by_userId(id, db)
     
     # Update user fields
     db_user.telegram_id = user_data.telegram_id
