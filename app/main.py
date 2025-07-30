@@ -19,7 +19,6 @@ app.include_router(upload.router)
 
 @app.get("/")
 async def root():
-    logger.info("Root endpoint accessed")
     return {"message": "Hello, TTS World!"}
 
 @app.on_event("startup")

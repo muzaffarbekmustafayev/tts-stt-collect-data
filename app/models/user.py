@@ -9,6 +9,6 @@ class User(Base):
     telegram_id = Column(String, unique=True, index=True, nullable=True)
     name = Column(String, nullable=False)
     gender = Column(String, nullable=False)
-    age = Column(String, nullable=False)
+    age = Column(Integer, nullable=False)
     info = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now(UTC))

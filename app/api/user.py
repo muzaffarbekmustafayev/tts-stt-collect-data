@@ -63,6 +63,7 @@ async def update_user(id: int, user_data: UserCreate, db: AsyncSession = Depends
     db_user.name = user_data.name
     db_user.gender = user_data.gender
     db_user.age = user_data.age
+    db_user.info = user_data.info
     
     await db.commit()
     await db.refresh(db_user)
