@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.main import app
 from app.db.session import get_db
 from app.models.base import Base
@@ -18,17 +19,47 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Create a sync session that can be used as an async session
+class SyncAsyncSession:
+    def __init__(self, sync_session):
+        self.sync_session = sync_session
+    
+    async def execute(self, query):
+        return self.sync_session.execute(query)
+    
+    async def commit(self):
+        self.sync_session.commit()
+    
+    async def rollback(self):
+        self.sync_session.rollback()
+    
+    async def refresh(self, obj):
+        self.sync_session.refresh(obj)
+    
+    async def add(self, obj):
+        self.sync_session.add(obj)
+    
+    async def close(self):
+        self.sync_session.close()
+    
+    async def __aenter__(self):
+        return self
+    
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
 def override_get_db():
+    sync_session = TestingSessionLocal()
+    async_session = SyncAsyncSession(sync_session)
     try:
-        db = TestingSessionLocal()
-        yield db
+        yield async_session
     finally:
-        db.close()
+        sync_session.close()
 
 app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
-async def setup_database():
+def setup_database():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -45,7 +76,8 @@ class TestUserAPI:
             "telegram_id": "123456789",
             "name": "Test User",
             "gender": "male",
-            "age": 25
+            "age": "25",
+            "info": "Test user info"
         }
         
         response = client.post("/users/", json=user_data)
@@ -55,6 +87,7 @@ class TestUserAPI:
         assert data["name"] == user_data["name"]
         assert data["gender"] == user_data["gender"]
         assert data["age"] == user_data["age"]
+        assert data["info"] == user_data["info"]
         assert "id" in data
     
     def test_create_user_duplicate_telegram_id(self, client):
@@ -63,7 +96,8 @@ class TestUserAPI:
             "telegram_id": "123456789",
             "name": "Test User",
             "gender": "male",
-            "age": 25
+            "age": "25",
+            "info": "Test user info"
         }
         
         # Create first user
@@ -82,7 +116,8 @@ class TestUserAPI:
             "telegram_id": "123456789",
             "name": "Test User",
             "gender": "male",
-            "age": 25
+            "age": "25",
+            "info": "Test user info"
         }
         create_response = client.post("/users/", json=user_data)
         assert create_response.status_code == 200
@@ -106,7 +141,8 @@ class TestUserAPI:
             "telegram_id": "123456789",
             "name": "Test User",
             "gender": "male",
-            "age": 25
+            "age": "25",
+            "info": "Test user info"
         }
         create_response = client.post("/users/", json=user_data)
         assert create_response.status_code == 200
@@ -128,9 +164,9 @@ class TestUserAPI:
         """Test getting all users"""
         # Create multiple users
         users_data = [
-            {"telegram_id": "111", "name": "User 1", "gender": "male", "age": 25},
-            {"telegram_id": "222", "name": "User 2", "gender": "female", "age": 30},
-            {"telegram_id": "333", "name": "User 3", "gender": "male", "age": 35}
+            {"telegram_id": "111", "name": "User 1", "gender": "male", "age": "25", "info": "User 1 info"},
+            {"telegram_id": "222", "name": "User 2", "gender": "female", "age": "30", "info": "User 2 info"},
+            {"telegram_id": "333", "name": "User 3", "gender": "male", "age": "35", "info": "User 3 info"}
         ]
         
         for user_data in users_data:
@@ -150,7 +186,8 @@ class TestUserAPI:
             "telegram_id": "123456789",
             "name": "Test User",
             "gender": "male",
-            "age": 25
+            "age": "25",
+            "info": "Test user info"
         }
         create_response = client.post("/users/", json=user_data)
         assert create_response.status_code == 200
@@ -161,7 +198,8 @@ class TestUserAPI:
             "telegram_id": "987654321",
             "name": "Updated User",
             "gender": "female",
-            "age": 30
+            "age": "30",
+            "info": "Updated user info"
         }
         
         response = client.put(f"/users/{created_user['id']}", json=update_data)
@@ -171,6 +209,7 @@ class TestUserAPI:
         assert data["name"] == update_data["name"]
         assert data["gender"] == update_data["gender"]
         assert data["age"] == update_data["age"]
+        assert data["info"] == update_data["info"]
     
     def test_update_user_not_found(self, client):
         """Test updating non-existent user"""
@@ -178,7 +217,8 @@ class TestUserAPI:
             "telegram_id": "987654321",
             "name": "Updated User",
             "gender": "female",
-            "age": 30
+            "age": "30",
+            "info": "Updated user info"
         }
         
         response = client.put("/users/999", json=update_data)
