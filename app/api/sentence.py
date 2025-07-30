@@ -29,3 +29,15 @@ async def get_random_sentence(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Sentence).offset(random_offset).limit(1))
     sentence = result.scalar_one()
     return sentence
+
+@router.get("/user/{user_id}", response_model=SentenceOut)
+async def get_user_sentence(user_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(func.count()).select_from(Sentence))
+    total = result.scalar()
+    if total == 0:
+        raise HTTPException(status_code=404, detail="No sentences found")
+
+    random_offset = random.randint(0, total - 1)
+    result = await db.execute(select(Sentence).offset(random_offset).limit(1))
+    sentence = result.scalar_one()
+    return sentence
