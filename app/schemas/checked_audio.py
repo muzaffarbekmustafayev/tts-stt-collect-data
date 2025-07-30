@@ -8,7 +8,7 @@ class CheckedAudioCreate(BaseModel):
     is_correct: bool
     comment: Optional[str]
 
-class CheckedAudioOut(BaseModel):
+class CheckedAudioOut(CheckedAudioCreate):
     id: int
     audio_id: int
     checked_by: int
@@ -17,4 +17,4 @@ class CheckedAudioOut(BaseModel):
     checked_at: datetime
 
     class Config:
-        orm_mode = True
+        from_attributes = True

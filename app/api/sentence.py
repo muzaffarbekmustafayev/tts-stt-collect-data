@@ -4,8 +4,10 @@ from sqlalchemy import select, func
 from app.db.session import get_db
 from app.models.sentence import Sentence
 from app.schemas.sentence import SentenceCreate, SentenceOut
+from app.core.logging import get_logger
 import random
 
+logger = get_logger("api.sentence")
 router = APIRouter(prefix="/sentences", tags=["Sentences"])
 
 @router.post("/", response_model=SentenceOut)
