@@ -12,8 +12,9 @@ logger = get_logger("main")
 
 app = FastAPI(title="TTS-STT data collection api")
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-AUDIO_DIR = os.path.join(BASE_DIR, "audio")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app papkasidan tashqariga chiqish
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+AUDIO_DIR = os.path.join(MEDIA_DIR, "audio")
 
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 
