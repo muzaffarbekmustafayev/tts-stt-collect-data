@@ -3,12 +3,19 @@ from app.api import user, sentence, received_audio, checked_audio
 from app.bot.bot import run_bot
 from app.core.logging import setup_logging, get_logger
 import asyncio
+import os
+from fastapi.staticfiles import StaticFiles
 
 # Setup logging
 setup_logging()
 logger = get_logger("main")
 
 app = FastAPI(title="TTS-STT data collection api")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AUDIO_DIR = os.path.join(BASE_DIR, "audio")
+
+app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 
 app.include_router(user.router)
 app.include_router(sentence.router)
