@@ -10,6 +10,8 @@ from app.services.sentence_service import get_sentence_by_id
 from app.services.received_audio_services import get_audio_by_user_id_and_sentence_id, update_received_audio_path_status
 import shutil
 import uuid
+from pydub import AudioSegment
+from pathlib import Path
 import os
 from datetime import datetime, UTC
 
@@ -35,29 +37,45 @@ async def create_received_audio(
     logger.info(f"Audio upload request - user_id: {user_id}, sentence_id: {sentence_id}, filename: {file.filename}")
 
     try:
-        # 1. user aniqlash
-        user = await get_user_by_userId(user_id, db)
-        # 2. sentence aniqlash
-        sentence = await get_sentence_by_id(sentence_id, db)
-        # 3. received audio topib update qilish
-        received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
-        if received_audio:
-          raise HTTPException(status_code=400, detail="Audio already exists")
+        # 1. MIME type tekshirish
+        if not file.content_type.startswith("audio/"):
+            raise HTTPException(status_code=400, detail="Uploaded file is not an audio file")
         
-        # 4. audio upload qilish
-        file_ext = file.filename.split(".")[-1]
-        filename = f"{uuid.uuid4()}.{file_ext}"
-        file_path = os.path.join(UPLOAD_DIR, filename)
+        # 2. user va sentence aniqlash
+        await get_user_by_userId(user_id, db)
+        await get_sentence_by_id(sentence_id, db)
+       
+        # 3. Mavjud audio borligini tekshirish
+        received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
+        
+        # 4. Faylni vaqtinchalik saqlash formatlash almashtirish uchun
+        ext = Path(file.filename).suffix.lower()
+        if not ext:
+            raise HTTPException(status_code=400, detail="File extension missing")
 
+        temp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
+        flac_filename = f"{uuid.uuid4()}.flac"
+        flac_path = os.path.join(UPLOAD_DIR, flac_filename)
+
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        await file.close()
+
+        # 5. Konvertatsiya
         try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+            audio = AudioSegment.from_file(temp_path)
+            audio.export(flac_path, format="flac")
         except Exception as e:
-            raise HTTPException(status_code=500, detail="Failed to save file")
+            logger.error(f"Audio conversion failed: {e}")
+            raise HTTPException(status_code=500, detail="Audio conversion failed")
+        finally:
+            os.remove(temp_path)
 
-        # 5. received audio qo'shish (oldin mavjudni update qilish)
-        await update_received_audio_path_status(received_audio.id, file_path, db)
+
+        # 6. received audio qo'shish (oldin mavjudni update qilish)
+        await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=flac_path, db=db)
+        
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to save audio record")
 
-    return {"status": "ok", "file_path": file_path, "id": received_audio.id}
+    return {"status": "ok", "file_path": flac_path, "id": received_audio.id}
