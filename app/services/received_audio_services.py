@@ -28,11 +28,33 @@ async def add_received_audio(user_id: int, sentence_id: int, db: AsyncSession) -
     if received_audio:
       raise HTTPException(status_code=400, detail="Audio already exists")
     
-    received_audio = ReceivedAudio(user_id=user_id, sentence_id=sentence_id, status=AudioStatus.pending)
+    received_audio = ReceivedAudio(user_id=user_id, sentence_id=sentence_id)
     db.add(received_audio)
     await db.commit()
     await db.refresh(received_audio)
     return received_audio
+
+async def get_or_create_received_audio(user_id: int, sentence_id: int, db: AsyncSession) -> ReceivedAudio:
+    """
+    Mavjud audio'ni topadi yoki yangi yaratadi
+    """
+    stmt = (
+        select(ReceivedAudio)
+        .where(ReceivedAudio.user_id == user_id)
+        .where(ReceivedAudio.sentence_id == sentence_id)
+    )
+    result = await db.execute(stmt)
+    received_audio = result.scalar_one_or_none()
+    
+    if received_audio:
+        return received_audio
+    else:
+        # Yangi audio yaratish
+        received_audio = ReceivedAudio(user_id=user_id, sentence_id=sentence_id)
+        db.add(received_audio)
+        await db.commit()
+        await db.refresh(received_audio)
+        return received_audio
 
 async def update_received_audio_to_newUser(user_id: int, received_audio_id: int, db: AsyncSession) -> ReceivedAudio | None:
     """
@@ -239,7 +261,6 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
         await update_checked_audio_reassign_to_thisUser(checked_audio_id, db)
       return received_audio
     raise HTTPException(status_code=404, detail="No available audio found")
-
 
 async def get_audio_by_id(audio_id: int, db: AsyncSession) -> ReceivedAudio | None:
   stmt = select(ReceivedAudio).where(ReceivedAudio.id == audio_id)
