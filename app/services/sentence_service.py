@@ -99,3 +99,12 @@ async def get_available_sentence(user_id: int, db: AsyncSession) -> Sentence | N
       await update_received_audio_reassign_to_thisUser(user_id, sentence.id, db)
       return sentence
     raise HTTPException(status_code=404, detail="No available sentence found")
+
+
+async def get_sentence_by_id(sentence_id: int, db: AsyncSession) -> Sentence | None:
+    stmt = select(Sentence).where(Sentence.id == sentence_id)
+    result = await db.execute(stmt)
+    sentence = result.scalar_one_or_none()
+    if not sentence:
+      raise HTTPException(status_code=404, detail="Sentence not found")
+    return sentence

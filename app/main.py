@@ -1,6 +1,5 @@
 from fastapi import FastAPI
 from app.api import user, sentence, received_audio, checked_audio
-from app.api import upload
 from app.bot.bot import run_bot
 from app.core.logging import setup_logging, get_logger
 import asyncio
@@ -15,7 +14,6 @@ app.include_router(user.router)
 app.include_router(sentence.router)
 app.include_router(received_audio.router)
 app.include_router(checked_audio.router)
-app.include_router(upload.router)
 
 @app.get("/")
 async def root():
