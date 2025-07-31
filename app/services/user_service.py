@@ -17,7 +17,7 @@ async def get_user_by_userId(user_id: int, db: AsyncSession) -> User | None:
     if not user:
         logger.warning(f"User not found with ID: {user_id}")
         raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User found with user_id: {user.user_id}")
+    logger.info(f"User found with user_id: {user_id}")
     return user
 
 async def get_user_by_telegramId(telegram_id: str, db: AsyncSession) -> User | None:
@@ -26,7 +26,7 @@ async def get_user_by_telegramId(telegram_id: str, db: AsyncSession) -> User | N
     if not user:
         logger.warning(f"User not found with telegram_id: {telegram_id}")
         raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User found with telegram_id: {user.telegram_id}")
+    logger.info(f"User found with telegram_id: {telegram_id}")
     return user
 
 async def check_user_sent_audio_over_limit(user_id: int, db: AsyncSession) -> bool:

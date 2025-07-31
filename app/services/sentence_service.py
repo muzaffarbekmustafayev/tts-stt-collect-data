@@ -8,7 +8,7 @@ from app.models.received_audio import ReceivedAudio
 from app.schemas.sentence import SentenceOut
 from app.config import settings
 from app.models.received_audio import AudioStatus
-from app.services.received_audio_services import add_received_audio, update_received_audio_to_newUser
+from app.services.received_audio_services import add_received_audio, update_received_audio_to_newUser, update_received_audio_reassign_to_thisUser
 
 async def get_available_sentence(user_id: int, db: AsyncSession) -> Sentence | None:
     timeout_time = datetime.now(timezone.utc) - timedelta(minutes=settings.pending_audio_timeout_minutes)
@@ -19,6 +19,7 @@ async def get_available_sentence(user_id: int, db: AsyncSession) -> Sentence | N
         .where(ReceivedAudio.user_id == user_id)
     )
 
+    # CHECK 1
     """
       so'z limitini tekshirish
       - statusi pending yoki approved bo'lgan audio bor bo'lishi kerak
@@ -52,6 +53,7 @@ async def get_available_sentence(user_id: int, db: AsyncSession) -> Sentence | N
       await add_received_audio(user_id, sentence.id, db)
       return sentence
     
+    # CHECK 2
     """
       agar sentence topilmasa
       - status pending va time limit over bo'lganlar
@@ -59,19 +61,41 @@ async def get_available_sentence(user_id: int, db: AsyncSession) -> Sentence | N
     """
     stmt = (
       select(Sentence)
+      .join(ReceivedAudio, Sentence.id == ReceivedAudio.sentence_id)
       .where(
           and_(
               Sentence.id.not_in(user_sentences_subq),
               ReceivedAudio.status == AudioStatus.pending,
-              ReceivedAudio.created_at > timeout_time
+              ReceivedAudio.created_at < timeout_time
           )
       )
       .limit(1)
     )
     result = await db.execute(stmt)
     sentence = result.scalar_one_or_none()
-    if not sentence:
-      raise HTTPException(status_code=404, detail="No available sentence found")
-    # agar sentence topilsa, user yuborishdan oldin uni received_audio user_id va created_at update bo'lish kerak
-    await update_received_audio_to_newUser(user_id, sentence.id, db)
-    return sentence
+    if sentence:
+      # agar sentence topilsa, user yuborishdan oldin uni received_audio user_id va created_at update bo'lish kerak
+      await update_received_audio_to_newUser(user_id, sentence.id, db)
+      return sentence
+    
+    # CHECK 3
+    # agar sentence topilmasa, usha user uzi oldin band qilinganligini tekshirish
+    stmt = (
+      select(Sentence)
+      .join(ReceivedAudio, Sentence.id == ReceivedAudio.sentence_id)
+      .where(
+          and_(
+              ReceivedAudio.user_id == user_id,
+              ReceivedAudio.status == AudioStatus.pending,
+              ReceivedAudio.created_at < timeout_time
+          )
+      )
+      .limit(1)
+    )
+    result = await db.execute(stmt)
+    sentence = result.scalar_one_or_none()
+    if sentence:
+      # agar sentence topilsa, create_at update qilish va userga qayta yuborish
+      await update_received_audio_reassign_to_thisUser(user_id, sentence.id, db)
+      return sentence
+    raise HTTPException(status_code=404, detail="No available sentence found")

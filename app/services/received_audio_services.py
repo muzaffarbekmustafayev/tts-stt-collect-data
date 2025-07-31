@@ -36,3 +36,20 @@ async def update_received_audio_to_newUser(user_id: int, sentence_id: int, db: A
       await db.commit()
       await db.refresh(received_audio)
       return received_audio
+    
+async def update_received_audio_reassign_to_thisUser(user_id: int, sentence_id: int, db: AsyncSession) -> ReceivedAudio | None:
+    """
+      created_at update bo'lish kerak
+    """
+    stmt = (
+        select(ReceivedAudio)
+        .where(ReceivedAudio.user_id == user_id)
+        .where(ReceivedAudio.sentence_id == sentence_id)
+    )
+    result = await db.execute(stmt)
+    received_audio = result.scalar_one_or_none()
+    if received_audio:
+      received_audio.created_at = datetime.now(timezone.utc)
+      await db.commit()
+      await db.refresh(received_audio)
+      return received_audio
