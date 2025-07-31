@@ -45,7 +45,7 @@ async def update_checked_audio_to_newUser(user_id: int, checked_audio_id: int, d
     checked_audio = result.scalar_one_or_none()
     if checked_audio:
       checked_audio.checked_by = user_id
-      checked_audio.created_at = datetime.now(timezone.utc)
+      checked_audio.checked_at = datetime.now(timezone.utc)
       await db.commit()
       await db.refresh(checked_audio)
       return checked_audio
@@ -62,7 +62,7 @@ async def update_checked_audio_reassign_to_thisUser(checked_audio_id: int, db: A
     result = await db.execute(stmt)
     checked_audio = result.scalar_one_or_none()
     if checked_audio:
-      checked_audio.created_at = datetime.now(timezone.utc)
+      checked_audio.checked_at = datetime.now(timezone.utc)
       await db.commit()
       await db.refresh(checked_audio)
       return checked_audio

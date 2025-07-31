@@ -6,7 +6,7 @@ from app.models.checked_audio import AudioStatus
 class CheckedAudioCreate(BaseModel):
     audio_id: int
     checked_by: int
-    is_correct: bool
+    is_correct: Optional[bool] = None
     comment: Optional[str]
     status: Optional[AudioStatus] = AudioStatus.pending
 
@@ -14,7 +14,7 @@ class CheckedAudioOut(CheckedAudioCreate):
     id: int
     audio_id: int
     checked_by: int
-    is_correct: bool
+    is_correct: Optional[bool] = None
     comment: Optional[str]
     checked_at: datetime
     status: AudioStatus

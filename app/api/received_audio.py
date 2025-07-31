@@ -17,7 +17,9 @@ from datetime import datetime, UTC
 
 logger = get_logger("api.received_audio")
 router = APIRouter(prefix="/received-audio", tags=["Received Audio"])
-UPLOAD_DIR = "app/audio"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app papkasidan tashqariga
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+UPLOAD_DIR = os.path.join(MEDIA_DIR, "audio")
 
 #upload audio va received audio topib update qilish
 @router.post("/", response_model=ReceivedAudioOut)
@@ -96,7 +98,8 @@ async def create_received_audio(
                     os.remove(temp_path)
 
         # 7. received audio update qilish
-        updated_audio = await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=flac_path, db=db)
+        relative_path = f"audio/{flac_filename}"
+        updated_audio = await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
     except Exception as e:
         logger.error(f"Failed to save audio record: {e}")
         raise HTTPException(status_code=500, detail="Failed to save audio record")
@@ -105,7 +108,7 @@ async def create_received_audio(
 
 
 # user id bo'yicha check qilish uchun audio olish
-@router.get("/{user_id}", response_model=list[ReceivedAudioOut])
+@router.get("/{user_id}", response_model=ReceivedAudioOut)
 async def get_audio_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
     # 1. user check
     user = await get_user_by_userId(user_id, db)

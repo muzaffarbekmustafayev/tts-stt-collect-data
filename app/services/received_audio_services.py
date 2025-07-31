@@ -124,6 +124,7 @@ async def update_received_audio_path_status(received_audio_id: int, file_path: s
 
 
 async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: AsyncSession) -> ReceivedAudio | None:
+    
     timeout_time = datetime.now(timezone.utc) - timedelta(minutes=settings.pending_audio_timeout_minutes)
      # CHECK 1
     """
@@ -147,7 +148,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
         select(CheckedAudio)
         .where(CheckedAudio.checked_by == user_id)
         .where(CheckedAudio.status == AudioStatus.pending)
-        .where(CheckedAudio.created_at < timeout_time)
+        .where(CheckedAudio.checked_at < timeout_time)
         .limit(1)
       )
       result = await db.execute(stmt)
@@ -188,7 +189,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
                     CheckedAudio.status.in_([AudioStatus.pending, AudioStatus.approved]),
                     or_(
                         CheckedAudio.status != AudioStatus.pending,
-                        CheckedAudio.created_at > timeout_time
+                        CheckedAudio.checked_at > timeout_time
                     )
                 )
             )
@@ -221,7 +222,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
           and_(
               CheckedAudio.id.not_in(user_audio_checked_subq),
               CheckedAudio.status == AudioStatus.pending,
-              CheckedAudio.created_at < timeout_time,
+              CheckedAudio.checked_at < timeout_time,
               ReceivedAudio.user_id != user_id
           )
       )
@@ -246,7 +247,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
           and_(
               CheckedAudio.checked_by == user_id,
               CheckedAudio.status == AudioStatus.pending,
-              CheckedAudio.created_at < timeout_time,
+              CheckedAudio.checked_at < timeout_time,
               ReceivedAudio.user_id != user_id
           )
       )
