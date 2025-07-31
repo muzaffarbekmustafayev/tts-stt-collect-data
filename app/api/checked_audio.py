@@ -1,22 +1,28 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioCreate, CheckedAudioOut
 from app.core.logging import get_logger
+from app.services.user_service import get_user_by_userId
+from app.services.received_audio_services import get_audio_by_id
+from app.services.checked_audio_services import checked_audio_and_update
 
 logger = get_logger("api.checked_audio")
 router = APIRouter(prefix="/checked-audio", tags=["Checked Audio"])
 
 @router.post("/", response_model=CheckedAudioOut)
 async def check_audio(data: CheckedAudioCreate, db: AsyncSession = Depends(get_db)):
-    new_check = CheckedAudio(**data.model_dump())
-    db.add(new_check)
-    await db.commit()
-    await db.refresh(new_check)
-    logger.info(f"Checked audio record created successfully with ID: {new_check.id}")
-    return new_check
+    # checked_by, audio_id, is_correct
+    # 1. check user
+    await get_user_by_userId(data.checked_by, db)
+    # 2. check audio_id
+    await get_audio_by_id(data.audio_id, db)
+    # 3. check if audio is already checked
+    result = await checked_audio_and_update(data.checked_by, data.audio_id, data.is_correct, db)
+    return result
+    
 
 @router.get("/by-audio/{audio_id}", response_model=list[CheckedAudioOut])
 async def get_check_by_audio(audio_id: int, db: AsyncSession = Depends(get_db)):

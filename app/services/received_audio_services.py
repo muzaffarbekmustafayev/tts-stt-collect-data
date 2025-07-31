@@ -133,33 +133,34 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
       - barchasi approved bo'lgan audio borligini tekshirish
       - pending bo'lgan audio vaqtida o'tganligini tekshirish
     """
-    if settings.user_check_audio_limit!=0 and check_audio_count >= settings.user_check_audio_limit:
-      # 1.1. user yuborganlar barchasi qabul qilinganmi      
-      stmt = (
-        select(func.count(CheckedAudio.id))
-        .where(CheckedAudio.checked_by == user_id)
-        .where(CheckedAudio.status == AudioStatus.approved)
-      )
-      result = await db.execute(stmt)
-      if result.scalar_one() >= settings.user_check_audio_limit:
-        raise HTTPException(status_code=400, detail="The user's sending result limit is over, please wait for the next sentence")
-      
-      # 1.2. user yuborganlar pending bo'lganlar vaqti tugaganmi     
-      stmt = (
-        select(CheckedAudio)
-        .where(CheckedAudio.checked_by == user_id)
-        .where(CheckedAudio.status == AudioStatus.pending)
-        .where(CheckedAudio.checked_at < timeout_time)
-        .limit(1)
-      )
-      result = await db.execute(stmt)
-      checked_audio = result.scalar_one_or_none()
-      if checked_audio:
-        # agar sentence topilsa, create_at update qilish va userga qayta yuborish
-        await update_checked_audio_reassign_to_thisUser(checked_audio.id, db)
-        return await get_audio_by_id(checked_audio.audio_id, db)
-      else:  
-        raise HTTPException(status_code=400, detail="The user's sending audio limit is over, please wait for the next sentence")
+    if settings.user_check_audio_limit > 0:
+      if check_audio_count >= settings.user_check_audio_limit:
+        # 1.1. user yuborganlar barchasi qabul qilinganmi      
+        stmt = (
+          select(func.count(CheckedAudio.id))
+          .where(CheckedAudio.checked_by == user_id)
+          .where(CheckedAudio.status == AudioStatus.approved)
+        )
+        result = await db.execute(stmt)
+        if result.scalar_one() >= settings.user_check_audio_limit:
+          raise HTTPException(status_code=400, detail="The user's sending result limit is over, please wait for the next sentence")
+        
+        # 1.2. user yuborganlar pending bo'lganlar vaqti tugaganmi     
+        stmt = (
+          select(CheckedAudio)
+          .where(CheckedAudio.checked_by == user_id)
+          .where(CheckedAudio.status == AudioStatus.pending)
+          .where(CheckedAudio.checked_at < timeout_time)
+          .limit(1)
+        )
+        result = await db.execute(stmt)
+        checked_audio = result.scalar_one_or_none()
+        if checked_audio:
+          # agar sentence topilsa, create_at update qilish va userga qayta yuborish
+          await update_checked_audio_reassign_to_thisUser(checked_audio.id, db)
+          return await get_audio_by_id(checked_audio.audio_id, db)
+        else:  
+          raise HTTPException(status_code=400, detail="The user's sending audio limit is over, please wait for the next sentence")
       
     # subquery: user oldin bu audioni'ni tekshirmagan bo'lishi kerak
     user_audio_checked_subq = (
@@ -198,12 +199,13 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
             .scalar_subquery() < settings.audio_check_limit
         )
         .where(ReceivedAudio.id.not_in(user_audio_checked_subq))
-        .where(ReceivedAudio.sentence_id.not_in(user_audio_sent_subq))
+        .where(ReceivedAudio.user_id != user_id)
         .limit(1)
     )
 
     result = await db.execute(stmt)
     received_audio = result.scalar_one_or_none()
+    print("received_audio", received_audio)
     if received_audio:
       # agar audio topilsa, userga yuborishdan oldin uni checked_audioga qo'shish kerak
       await add_checked_audio(user_id, received_audio.id, db)

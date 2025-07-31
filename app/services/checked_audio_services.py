@@ -98,3 +98,20 @@ async def update_checked_audio_result_status(checked_audio_id: int, status: Audi
     await db.commit()
     await db.refresh(checked_audio)
     return checked_audio
+  
+async def checked_audio_and_update(user_id: int, audio_id: int, is_correct: bool, db: AsyncSession) -> CheckedAudio | None:
+    stmt = (
+        select(CheckedAudio)
+        .where(CheckedAudio.checked_by == user_id)
+        .where(CheckedAudio.audio_id == audio_id)
+        .where(CheckedAudio.status == AudioStatus.pending)
+    )
+    result = await db.execute(stmt)
+    checked_audio = result.scalar_one_or_none()
+    if not checked_audio:
+      raise HTTPException(status_code=404, detail="Checked audio not found")
+    checked_audio.status = AudioStatus.approved
+    checked_audio.is_correct = is_correct
+    await db.commit()
+    await db.refresh(checked_audio)
+    return checked_audio

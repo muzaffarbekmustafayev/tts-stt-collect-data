@@ -19,7 +19,6 @@ async def get_user_by_userId(user_id: int, db: AsyncSession) -> User | None:
     if not user:
         logger.warning(f"User not found with ID: {user_id}")
         raise HTTPException(status_code=404, detail="User not found")
-    logger.info(f"User found with user_id: {user_id}")
     return user
 
 async def get_user_by_telegramId(telegram_id: str, db: AsyncSession) -> User | None:
