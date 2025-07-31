@@ -10,7 +10,6 @@ class SentenceOut(BaseModel):
     id: int
     text: str
     language: str
-    used_count: int
     created_at: datetime
 
     class Config:
