@@ -25,6 +25,6 @@ async def create_sentence(sentence: SentenceCreate, db: AsyncSession = Depends(g
 @router.get("/user/{user_id}", response_model=SentenceOut)
 async def get_user_sentence(user_id: int, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_userId(user_id, db)
-    await check_user_sent_audio_over_limit(user.id, db)
-    sentence = await get_available_sentence(user.id, db)
+    sent_audio_count = await check_user_sent_audio_over_limit(user.id, db)
+    sentence = await get_available_sentence(user.id, sent_audio_count, db)
     return sentence
