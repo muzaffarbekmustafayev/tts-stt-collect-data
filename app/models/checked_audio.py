@@ -1,6 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey, Boolean, DateTime, Text
 from datetime import datetime, UTC
 from app.models.base import Base
+from app.models.received_audio import AudioStatus
+from sqlalchemy.dialects.postgresql import ENUM
 
 class CheckedAudio(Base):
     __tablename__ = "checked_audio"
@@ -10,4 +12,5 @@ class CheckedAudio(Base):
     checked_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
     comment = Column(Text, nullable=True)
     is_correct = Column(Boolean, nullable=False)
+    status = Column(ENUM(AudioStatus, name='audiostatus'), default=AudioStatus.pending)
     checked_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
