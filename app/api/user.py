@@ -15,6 +15,14 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.post("/", response_model=UserOut)
 async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
     new_user = User(**user.model_dump())
+    if new_user.age < 1 or new_user.age > 120:
+        raise HTTPException(status_code=400, detail="Age must be between 1 and 120")
+    if new_user.gender.lower() not in ["male", "female"]:
+        raise HTTPException(status_code=400, detail="Gender must be either male or female")
+    if len(new_user.name) < 3 or len(new_user.name) > 100:
+        raise HTTPException(status_code=400, detail="Name must be between 3 and 100 characters")
+    if len(new_user.info) > 500:
+        raise HTTPException(status_code=400, detail="Info must be less than 500 characters")
     db.add(new_user)
     try:
         await db.commit()
@@ -49,13 +57,24 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
 @router.put("/{id}", response_model=UserOut)
 async def update_user(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     db_user = await get_user_by_userId(id, db)
-    
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user_data.age and (user_data.age < 1 or user_data.age > 120):
+        raise HTTPException(status_code=400, detail="Age must be between 1 and 120")
+    if user_data.gender and user_data.gender.lower() not in ["male", "female"]:
+        raise HTTPException(status_code=400, detail="Gender must be either male or female")
+    if user_data.name and (len(user_data.name) < 3 or len(user_data.name) > 100):
+        raise HTTPException(status_code=400, detail="Name must be between 3 and 100 characters")
+    if user_data.info and len(user_data.info) > 500:
+        raise HTTPException(status_code=400, detail="Info must be less than 500 characters")
     # Update user fields
-    db_user.telegram_id = user_data.telegram_id
     db_user.name = user_data.name
     db_user.gender = user_data.gender
     db_user.age = user_data.age
-    db_user.info = user_data.info
+    if user_data.info:
+        db_user.info = user_data.info
+    if user_data.telegram_id:
+        db_user.telegram_id = user_data.telegram_id
     
     await db.commit()
     await db.refresh(db_user)
