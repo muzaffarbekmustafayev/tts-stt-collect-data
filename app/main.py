@@ -5,16 +5,13 @@ from app.core.logging import setup_logging, get_logger
 import asyncio
 import os
 from fastapi.staticfiles import StaticFiles
+from app.config import AUDIO_DIR
 
 # Setup logging
 setup_logging()
 logger = get_logger("main")
 
 app = FastAPI(title="TTS-STT data collection api")
-
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app papkasidan tashqariga chiqish
-MEDIA_DIR = os.path.join(BASE_DIR, "media")
-AUDIO_DIR = os.path.join(MEDIA_DIR, "audio")
 
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")
 

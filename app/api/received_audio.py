@@ -14,12 +14,19 @@ from pydub import AudioSegment
 from pathlib import Path
 import os
 from datetime import datetime, UTC
+from app.config import MEDIA_DIR
 
 logger = get_logger("api.received_audio")
 router = APIRouter(prefix="/received-audio", tags=["Received Audio"])
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app papkasidan tashqariga
-MEDIA_DIR = os.path.join(BASE_DIR, "media")
+
 UPLOAD_DIR = os.path.join(MEDIA_DIR, "audio")
+
+# Papka yaratish funksiyasi
+def ensure_directories_exist():
+    """Kerakli papkalarni yaratadi agar mavjud bo'lmasa"""
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    logger.info(f"Directories ensured: {MEDIA_DIR}, {UPLOAD_DIR}")
 
 #upload audio va received audio topib update qilish
 @router.post("/", response_model=ReceivedAudioOut)
@@ -34,75 +41,52 @@ async def create_received_audio(
     if not user_id or not sentence_id:
         raise HTTPException(status_code=400, detail="Invalid request")
     
-    try:
-        # 1. MIME type tekshirish - agar content_type mavjud bo'lsa
-        # if file.content_type and not file.content_type.startswith("audio/"):
-        #     raise HTTPException(status_code=400, detail="Uploaded file is not an audio file")
 
-        # 2. File extension orqali tekshirish
-        ext = Path(file.filename or "").suffix.lower()
-        # allowed_extensions = [".aac", ".mp3", ".wav", ".flac", ".ogg", ".m4a"]
+    # Papkalarni yaratish
+    ensure_directories_exist()
+    
+    ext = Path(file.filename or "").suffix.lower()
+    # allowed_extensions = [".aac", ".mp3", ".wav", ".flac", ".ogg", ".m4a"]
 
-        # if not ext or ext not in allowed_extensions:
-        #     raise HTTPException(
-        #         status_code=400, 
-        #         detail=f"Unsupported audio format. Supported extensions: {', '.join(allowed_extensions)}"
-        #     )
+    # 3. user va sentence aniqlash
+    await get_user_by_userId(user_id, db)
+    await get_sentence_by_id(sentence_id, db)
+   
+    # 4. Mavjud audio borligini tekshirish
+    received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
+    
+    # 5. Faylni vaqtinchalik saqlash formatlash almashtirish uchun
+    temp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
+    flac_filename = f"{uuid.uuid4()}.flac"
+    flac_path = os.path.join(UPLOAD_DIR, flac_filename)
 
-        # # ACC format uchun maxsus tekshirish (agar content_type mavjud bo'lsa)
-        # if file.content_type:
-        #     allowed_audio_types = [
-        #         "audio/aac", "audio/mp4", "audio/m4a",  # ACC formatlar
-        #         "audio/mpeg", "audio/mp3",               # MP3
-        #         "audio/wav", "audio/x-wav",              # WAV
-        #         "audio/flac", "audio/x-flac",            # FLAC
-        #         "audio/ogg", "audio/x-ogg"               # OGG
-        #     ]
-            
-        #     if file.content_type not in allowed_audio_types:
-        #         logger.warning(f"Unknown content type: {file.content_type}, but extension {ext} is allowed")
-        
-        # 3. user va sentence aniqlash
-        await get_user_by_userId(user_id, db)
-        await get_sentence_by_id(sentence_id, db)
-       
-        # 4. Mavjud audio borligini tekshirish
-        received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
-        
-        # 5. Faylni vaqtinchalik saqlash formatlash almashtirish uchun
-        temp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
-        flac_filename = f"{uuid.uuid4()}.flac"
-        flac_path = os.path.join(UPLOAD_DIR, flac_filename)
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    await file.close()
 
-        with open(temp_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        await file.close()
-
-        # 6. Konvertatsiya
-        if ext == ".flac":
+    # 6. Konvertatsiya
+    if ext == ".flac":
+        shutil.move(temp_path, flac_path)
+    else:
+        try:
+            # ACC va boshqa formatlarni FLAC ga o'tkazish
+            audio = AudioSegment.from_file(temp_path)
+            audio.export(flac_path, format="flac")
+            logger.info(f"Audio converted from {ext} to FLAC successfully")
+        except Exception as e:
+            logger.error(f"Audio conversion failed: {e}")
+            # Agar conversion xatolik bersa, original faylni ishlatish
             shutil.move(temp_path, flac_path)
-        else:
-            try:
-                # ACC va boshqa formatlarni FLAC ga o'tkazish
-                audio = AudioSegment.from_file(temp_path)
-                audio.export(flac_path, format="flac")
-                logger.info(f"Audio converted from {ext} to FLAC successfully")
-            except Exception as e:
-                logger.error(f"Audio conversion failed: {e}")
-                # Agar conversion xatolik bersa, original faylni ishlatish
-                shutil.move(temp_path, flac_path)
-                logger.info(f"Using original file format: {ext}")
-            finally:
-                # Temporary faylni o'chirish (agar mavjud bo'lsa)
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+            logger.info(f"Using original file format: {ext}")
+        finally:
+            # Temporary faylni o'chirish (agar mavjud bo'lsa)
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
 
-        # 7. received audio update qilish
-        relative_path = f"audio/{flac_filename}"
-        updated_audio = await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
-    except Exception as e:
-        logger.error(f"Failed to save audio record: {e}")
-        raise HTTPException(status_code=500, detail="Failed to save audio record")
+    # 7. received audio update qilish
+    relative_path = f"audio/{flac_filename}"
+    updated_audio = await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
+    
 
     return updated_audio
 

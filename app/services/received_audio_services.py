@@ -98,12 +98,13 @@ async def get_audio_by_user_id_and_sentence_id(user_id: int, sentence_id: int, d
         select(ReceivedAudio)
         .where(ReceivedAudio.user_id == user_id)
         .where(ReceivedAudio.sentence_id == sentence_id)
-        .where(ReceivedAudio.status == AudioStatus.pending)
     )
     result = await db.execute(stmt)
     received_audio = result.scalar_one_or_none()
     if not received_audio:
       raise HTTPException(status_code=404, detail="Audio not found")
+    if received_audio.status == AudioStatus.approved:
+      raise HTTPException(status_code=400, detail="This audio is already approved")
     return received_audio
 
 # file yuklangandan keyin update qilish (audio_path va status update qilish)
@@ -117,7 +118,7 @@ async def update_received_audio_path_status(received_audio_id: int, file_path: s
     if not received_audio:
       raise HTTPException(status_code=404, detail="Audio not found")
     received_audio.audio_path = file_path
-    received_audio.status = AudioStatus.pending
+    received_audio.status = AudioStatus.approved
     await db.commit()
     await db.refresh(received_audio)
     return received_audio

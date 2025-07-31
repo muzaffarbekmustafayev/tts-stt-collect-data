@@ -1,4 +1,9 @@
 from pydantic_settings import BaseSettings
+import os
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # app papkasidan tashqariga chiqish
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+AUDIO_DIR = os.path.join(MEDIA_DIR, "audio")
 
 class Settings(BaseSettings):
     BOT_API_TOKEN: str # telegram bot token
