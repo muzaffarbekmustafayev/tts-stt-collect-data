@@ -100,4 +100,8 @@ async def get_audio_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
     check_audio_count = await check_user_check_audio_limit(user.id, db)
     # 3. get an audio with logic 
     received_audio = await get_available_receivedAudio(user_id, check_audio_count, db)
+    if not received_audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
+    sentence = await get_sentence_by_id(received_audio.sentence_id, db)
+    received_audio.sentence = sentence.text
     return received_audio
