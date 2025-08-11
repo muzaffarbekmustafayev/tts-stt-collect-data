@@ -494,7 +494,6 @@ async def handle_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 def register_handlers(app: Application):
     """Register all bot handlers"""
-    logger.info("Registering bot handlers")
     
     # Registration conversation handler
     registration_conv_handler = ConversationHandler(

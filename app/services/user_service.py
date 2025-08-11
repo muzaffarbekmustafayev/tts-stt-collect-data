@@ -91,3 +91,41 @@ async def update_user(id: int, user_data: UserCreate, db: AsyncSession) -> User:
     await db.refresh(db_user)
     logger.info(f"User updated successfully with ID: {db_user.id}")
     return db_user
+
+
+async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[datetime, int, int]:
+    
+    sent_count_subq = (
+        select(func.count(ReceivedAudio.id))
+        .where(ReceivedAudio.user_id == User.id)
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    checked_count_subq = (
+        select(func.count(CheckedAudio.id))
+        .where(CheckedAudio.checked_by == User.id)
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(
+            sent_count_subq.label("sent_audio_count"),
+            checked_count_subq.label("checked_audio_count"),
+            User.created_at
+        )
+        .where(User.telegram_id == user_telegram_id)
+    )
+    
+    result = await db.execute(stmt)
+    row = result.first()
+
+    if not row:
+        logger.warning(f"User not found with telegram_id: {user_telegram_id}")
+        raise HTTPException(status_code=404, detail="User not found")
+
+    sent_audio_count, checked_audio_count, created_at = row
+    regisTime = datetime.now(timezone.utc) - created_at
+
+    return regisTime, sent_audio_count, checked_audio_count

@@ -49,19 +49,24 @@ async def bot_get_available_sentence(user_id: int, sent_audio_count: int, db: As
 @handle_service_exception
 async def bot_get_audio_for_checking(user_id: int, db: AsyncSession):
     """Bot uchun audio olish - exception ni handle qiladi"""
-    from app.services.received_audio_services import get_audio_for_checking
-    return await get_audio_for_checking(user_id, db)
+    from app.services.received_audio_services import get_available_receivedAudio
+    return await get_available_receivedAudio(user_id, 0, db)  # check_audio_count ni hisoblash kerak
 
 # Checked audio services uchun wrapper
 @handle_service_exception
 async def bot_create_checked_audio(audio_id: int, checked_by: int, is_correct: bool, db: AsyncSession):
     """Bot uchun checked audio yaratish - exception ni handle qiladi"""
-    from app.services.checked_audio_services import create_checked_audio
-    from app.schemas.checked_audio import CheckedAudioCreate
+    from app.services.checked_audio_services import add_checked_audio, update_checked_audio_result_status
+    from app.models.received_audio import AudioStatus
     
-    data = CheckedAudioCreate(
-        audio_id=audio_id,
-        checked_by=checked_by,
-        is_correct=is_correct
+    # First create the checked audio record
+    checked_audio = await add_checked_audio(checked_by, audio_id, db)
+    
+    # Then update it with the result
+    result = await update_checked_audio_result_status(
+        checked_audio.id, 
+        AudioStatus.approved, 
+        is_correct, 
+        db
     )
-    return await create_checked_audio(data, db)
+    return result
