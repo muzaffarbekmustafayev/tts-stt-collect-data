@@ -1,6 +1,6 @@
 {
-  "verbose": true,
   "exec": "python main.py",
   "ext": "py",
-  "watch": ["**/*.py"]
+  "watch": ["."],
+  "ignore": ["*.txt", "*.md", "venv/*"]
 }
