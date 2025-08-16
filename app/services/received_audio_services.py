@@ -200,6 +200,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
         )
         .where(ReceivedAudio.id.not_in(user_audio_checked_subq))
         .where(ReceivedAudio.user_id != user_id)
+        .where(ReceivedAudio.audio_path.isnot(None))  # Add condition: audio_path must not be null
         .limit(1)
     )
 
@@ -226,7 +227,8 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
               CheckedAudio.id.not_in(user_audio_checked_subq),
               CheckedAudio.status == AudioStatus.pending,
               CheckedAudio.checked_at < timeout_time,
-              ReceivedAudio.user_id != user_id
+              ReceivedAudio.user_id != user_id,
+              ReceivedAudio.audio_path.isnot(None)  # Add condition: audio_path must not be null
           )
       )
       .limit(1)
@@ -251,7 +253,8 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
               CheckedAudio.checked_by == user_id,
               CheckedAudio.status == AudioStatus.pending,
               CheckedAudio.checked_at < timeout_time,
-              ReceivedAudio.user_id != user_id
+              ReceivedAudio.user_id != user_id,
+              ReceivedAudio.audio_path.isnot(None)  # Add condition: audio_path must not be null
           )
       )
       .limit(1)

@@ -9,4 +9,3 @@ class Sentence(Base):
     text = Column(Text, nullable=False)
     language = Column(String, default="uz", nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
-    used_count = Column(Integer, default=0)

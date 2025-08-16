@@ -26,7 +26,6 @@ def ensure_directories_exist():
     """Kerakli papkalarni yaratadi agar mavjud bo'lmasa"""
     os.makedirs(MEDIA_DIR, exist_ok=True)
     os.makedirs(UPLOAD_DIR, exist_ok=True)
-    logger.info(f"Directories ensured: {MEDIA_DIR}, {UPLOAD_DIR}")
 
 #upload audio va received audio topib update qilish
 @router.post("/", response_model=ReceivedAudioOut)
