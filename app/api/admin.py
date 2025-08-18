@@ -1,46 +1,69 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.models.user import User
-from app.schemas.user import UserCreate, UserOut
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from app.core.logging import get_logger
-from app.services.admin_user_service import get_admin_user_by_id, get_admin_user_by_username, create_admin_user, update_admin_user
 from app.models.admin_users import AdminUser
 from app.schemas.admin_users import AdminUserCreate, AdminUserOut
+from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id
+from app.models.user import User
+from app.schemas.user import UserOut
+from app.models.sentence import Sentence
+from app.schemas.sentence import SentenceOut
+from app.models.received_audio import ReceivedAudio
+from app.schemas.received_audio import ReceivedAudioOut
+from app.models.checked_audio import CheckedAudio
+from app.schemas.checked_audio import CheckedAudioOut
 
-logger = get_logger("api.user")
+logger = get_logger("api.admin")
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
-# add user
-@router.post("/", response_model=AdminUserOut)
-async def create_admin_user(user: AdminUserCreate, db: AsyncSession = Depends(get_db)):
-    new_user = await create_admin_user(user, db)
-    return new_user
-
-# get user by telegram id
-@router.get("/{username}", response_model=AdminUserOut)
-async def get_admin_user_by_username(username: str, db: AsyncSession = Depends(get_db)):
-    user = await get_admin_user_by_username(username, db)
-    return user
-  
-# get user by id
-@router.get("/by-id/{id}", response_model=AdminUserOut)
-async def get_admin_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
-    user = await get_admin_user_by_id(id, db)
-    return user
-  
-# get all users
-@router.get("/", response_model=list[AdminUserOut])
+# Get all admin users
+@router.get("/", response_model=list[AdminUserOut], dependencies=[Depends(get_current_admin_user)])
 async def get_all_admin_users(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(AdminUser))
     users = result.scalars().all()
-    logger.info(f"Found {len(users)} users")
+    logger.info(f"Found {len(users)} admin users")
     return users
-  
-# update user
-@router.put("/{id}", response_model=AdminUserOut)
-async def update_admin_user_by_id(id: int, user_data: AdminUserCreate, db: AsyncSession = Depends(get_db)):
+
+# add admin user
+@router.post("/", response_model=AdminUserOut, dependencies=[Depends(get_current_superadmin_user)])
+async def create_admin_user_api(user: AdminUserCreate, db: AsyncSession = Depends(get_db)):
+    new_user = await create_admin_user(user, db)
+    return new_user
+
+# update admin user
+@router.put("/{id}", response_model=AdminUserOut, dependencies=[Depends(get_current_superadmin_user)])
+async def update_admin_user_by_id_api(id: int, user_data: AdminUserCreate, db: AsyncSession = Depends(get_db)):
     user = await update_admin_user(id, user_data, db)
     return user
+
+
+
+# get users
+@router.get("/users", response_model=list[UserOut], dependencies=[Depends(get_current_admin_user)])
+async def get_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User))
+    users = result.scalars().all()
+    return users
+
+#get sentences
+@router.get("/sentences", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
+async def get_sentences(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Sentence))
+    sentences = result.scalars().all()
+    return sentences
+
+#get audios
+@router.get("/audios", response_model=list[ReceivedAudioOut], dependencies=[Depends(get_current_admin_user)])
+async def get_audios(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ReceivedAudio))
+    audios = result.scalars().all()
+    return audios
+
+#get checked audios
+@router.get("/checked-audios", response_model=list[CheckedAudioOut], dependencies=[Depends(get_current_admin_user)])
+async def get_checked_audios(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CheckedAudio))
+    checked_audios = result.scalars().all()
+    return checked_audios

@@ -276,3 +276,13 @@ async def get_audio_by_id(audio_id: int, db: AsyncSession) -> ReceivedAudio | No
   if not received_audio:
     raise HTTPException(status_code=404, detail="Audio not found")
   return received_audio
+
+
+async def get_received_audio_by_id(audio_id: int, db: AsyncSession) -> ReceivedAudio | None:
+  stmt = select(ReceivedAudio).where(ReceivedAudio.id == audio_id)
+  result = await db.execute(stmt)
+  received_audio = result.scalar_one_or_none()
+  if not received_audio:
+    raise HTTPException(status_code=404, detail="Audio not found")
+  return received_audio
+

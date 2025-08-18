@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     user_check_audio_limit: int = 1000 # bir user nechta audio tekshirishi
     audio_check_limit: int = 5 # bir audio nechta marta takshirilishi
     pending_audio_timeout_minutes: int = 10 # audio tekshirish vaqti
+    SECRET_KEY: str # secret key for jwt
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 # access token expire minutes
     # other settings
     class Config:
         env_file = ".env"

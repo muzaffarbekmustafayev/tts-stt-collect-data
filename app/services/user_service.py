@@ -129,3 +129,10 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
     regisTime = datetime.now(timezone.utc) - created_at
 
     return regisTime, sent_audio_count, checked_audio_count
+
+
+async def delete_user(id: int, db: AsyncSession) -> User:
+    user = await get_user_by_userId(id, db)
+    await db.delete(user)
+    await db.commit()
+    return user

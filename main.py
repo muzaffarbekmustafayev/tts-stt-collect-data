@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api import user, sentence, received_audio, checked_audio, statistic, admin
+from app.api import user, sentence, received_audio, checked_audio, statistic, admin, auth
 from app.core.logging import setup_logging, get_logger
 from fastapi.staticfiles import StaticFiles
 from app.config import AUDIO_DIR
@@ -37,7 +37,8 @@ app.include_router(sentence.router)
 app.include_router(received_audio.router)
 app.include_router(checked_audio.router)
 app.include_router(statistic.router)
-# app.include_router(admin.router)
+app.include_router(admin.router)
+app.include_router(auth.router)
 
 @app.get("/")
 async def root():

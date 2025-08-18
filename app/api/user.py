@@ -6,7 +6,8 @@ from app.schemas.user import UserCreate, UserOut
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.core.logging import get_logger
-from app.services.user_service import get_user_by_userId, get_user_by_telegramId, create_user, update_user
+from app.services.user_service import get_user_by_userId, get_user_by_telegramId, create_user, update_user, delete_user
+from app.services.admin_user_service import get_current_admin_user
 
 logger = get_logger("api.user")
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -41,4 +42,10 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
 @router.put("/{id}", response_model=UserOut)
 async def update_user_by_id(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     user = await update_user(id, user_data, db)
+    return user
+
+# delete user
+@router.delete("/{id}", response_model=UserOut, dependencies=[Depends(get_current_admin_user)])
+async def delete_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
+    user = await delete_user(id, db)
     return user

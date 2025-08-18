@@ -115,3 +115,12 @@ async def checked_audio_and_update(user_id: int, audio_id: int, is_correct: bool
     await db.commit()
     await db.refresh(checked_audio)
     return checked_audio
+
+
+async def get_checked_audio_by_id(checked_audio_id: int, db: AsyncSession) -> CheckedAudio | None:
+    stmt = select(CheckedAudio).where(CheckedAudio.id == checked_audio_id)
+    result = await db.execute(stmt)
+    checked_audio = result.scalar_one_or_none()
+    if not checked_audio:
+      raise HTTPException(status_code=404, detail="Checked audio not found")
+    return checked_audio
