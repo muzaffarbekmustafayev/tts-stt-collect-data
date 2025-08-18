@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
@@ -7,7 +7,8 @@ from app.schemas.checked_audio import CheckedAudioCreate, CheckedAudioOut
 from app.core.logging import get_logger
 from app.services.user_service import get_user_by_userId
 from app.services.received_audio_services import get_audio_by_id
-from app.services.checked_audio_services import checked_audio_and_update
+from app.services.checked_audio_services import checked_audio_and_update, get_checked_audio_by_id
+from app.services.admin_user_service import get_current_admin_user
 
 logger = get_logger("api.checked_audio")
 router = APIRouter(prefix="/checked-audio", tags=["Checked Audio"])
@@ -30,3 +31,11 @@ async def get_check_by_audio(audio_id: int, db: AsyncSession = Depends(get_db)):
     check_list = result.scalars().all()
     logger.info(f"Found {len(check_list)} checked audio records for audio {audio_id}")
     return check_list
+
+
+@router.delete("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
+async def delete_checked_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
+    checked_audio = await get_checked_audio_by_id(id, db)
+    await db.delete(checked_audio)
+    await db.commit()
+    return checked_audio

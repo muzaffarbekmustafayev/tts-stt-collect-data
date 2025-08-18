@@ -7,7 +7,7 @@ from app.models.received_audio import ReceivedAudio
 from app.core.logging import get_logger
 from app.services.user_service import get_user_by_userId, check_user_check_audio_limit
 from app.services.sentence_service import get_sentence_by_id
-from app.services.received_audio_services import get_audio_by_user_id_and_sentence_id, update_received_audio_path_status, get_available_receivedAudio, add_received_audio
+from app.services.received_audio_services import get_audio_by_user_id_and_sentence_id, update_received_audio_path_status, get_available_receivedAudio, add_received_audio, get_received_audio_by_id
 import shutil
 import uuid
 from pydub import AudioSegment
@@ -15,6 +15,7 @@ from pathlib import Path
 import os
 from datetime import datetime, UTC
 from app.config import MEDIA_DIR
+from app.services.admin_user_service import get_current_admin_user
 
 logger = get_logger("api.received_audio")
 router = APIRouter(prefix="/received-audio", tags=["Received Audio"])
@@ -103,4 +104,12 @@ async def get_audio_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Audio not found")
     sentence = await get_sentence_by_id(received_audio.sentence_id, db)
     received_audio.sentence = sentence.text
+    return received_audio
+
+# delete received audio
+@router.delete("/{id}", response_model=ReceivedAudioOut, dependencies=[Depends(get_current_admin_user)])
+async def delete_received_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
+    received_audio = await get_received_audio_by_id(id, db)
+    await db.delete(received_audio)
+    await db.commit()
     return received_audio
