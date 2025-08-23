@@ -22,7 +22,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", scheme_name="Bearer")
 
 
 
@@ -108,3 +108,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 def hash_password(password: str):
     return pwd_context.hash(password)
+
+
+def get_payload(token: str):
+    payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    return payload

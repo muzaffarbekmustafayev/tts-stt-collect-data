@@ -16,6 +16,7 @@ class ReceivedAudioOut(BaseModel):
     audio_path: Optional[str] = None
     duration: Optional[int] = None
     sentence: str
+    status: AudioStatus
     created_at: datetime
 
     class Config:

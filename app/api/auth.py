@@ -1,19 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.core.logging import get_logger
 from app.schemas.admin_users import AdminUserOut
 from app.config import settings
 from datetime import timedelta
+from jose import JWTError
 from fastapi.security import OAuth2PasswordRequestForm
-from app.services.admin_user_service import get_admin_user_by_username, verify_password, create_access_token, get_current_user
+from app.services.admin_user_service import get_admin_user_by_username, verify_password, create_access_token, get_current_user, get_payload
+from fastapi.responses import JSONResponse
 
 logger = get_logger("api.auth")
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # Admin authentication endpoint (login)
-@router.post("/")
-async def auth_admin_user(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
+@router.post("/login")
+async def auth_admin_user(response: Response, form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
     try:
         user = await get_admin_user_by_username(form_data.username, db)
     except HTTPException:
@@ -38,13 +40,27 @@ async def auth_admin_user(form_data: OAuth2PasswordRequestForm = Depends(), db: 
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    access_token = create_access_token(
+    token = create_access_token(
         data={"sub": user.username, "role": user.role},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    content = {
+        "token": token
+    }
+    return JSONResponse(content=content, status_code=status.HTTP_200_OK)
+    
 
 # Get current user
 @router.get("/me", response_model=AdminUserOut)
 async def read_users_me(current_user: AdminUserOut = Depends(get_current_user)):
-    return current_user
+    content = {
+        "data": {
+            "id": current_user.id,
+            "username": current_user.username,
+            "role": current_user.role,
+            "is_active": current_user.is_active,
+            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+        }
+    }
+    return JSONResponse(content=content, status_code=status.HTTP_200_OK)
