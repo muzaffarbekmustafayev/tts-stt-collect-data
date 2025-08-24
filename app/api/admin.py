@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from sqlalchemy import select, func, text
@@ -42,36 +42,36 @@ async def update_admin_user_by_id_api(id: int, user_data: AdminUserCreate, db: A
 
 # get users
 @router.get("/users", response_model=list[UserOut], dependencies=[Depends(get_current_admin_user)])
-async def get_users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User))
+async def get_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).offset((page - 1) * limit).limit(limit))
     users = result.scalars().all()
     return users
 
 # get admin users
 @router.get("/admin-users", response_model=list[AdminUserOut], dependencies=[Depends(get_current_admin_user)])
-async def get_admin_users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(AdminUser))
+async def get_admin_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AdminUser).offset((page - 1) * limit).limit(limit))
     users = result.scalars().all()
     return users
 
 #get sentences
 @router.get("/sentences", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
-async def get_sentences(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Sentence))
+async def get_sentences(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Sentence).offset((page - 1) * limit).limit(limit))
     sentences = result.scalars().all()
     return sentences
 
 #get audios
 @router.get("/audios", response_model=list[ReceivedAudioOut], dependencies=[Depends(get_current_admin_user)])
-async def get_audios(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ReceivedAudio))
+async def get_audios(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(ReceivedAudio).offset((page - 1) * limit).limit(limit))
     audios = result.scalars().all()
     return audios
 
 #get checked audios
 @router.get("/checked-audios", response_model=list[CheckedAudioOut], dependencies=[Depends(get_current_admin_user)])
-async def get_checked_audios(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(CheckedAudio))
+async def get_checked_audios(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(CheckedAudio).offset((page - 1) * limit).limit(limit))
     checked_audios = result.scalars().all()
     return checked_audios
 
