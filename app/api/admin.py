@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from sqlalchemy import select
+from sqlalchemy import select, func, text
 from app.core.logging import get_logger
 from app.models.admin_users import AdminUser
 from app.schemas.admin_users import AdminUserCreate, AdminUserOut
@@ -47,6 +47,13 @@ async def get_users(db: AsyncSession = Depends(get_db)):
     users = result.scalars().all()
     return users
 
+# get admin users
+@router.get("/admin-users", response_model=list[AdminUserOut], dependencies=[Depends(get_current_admin_user)])
+async def get_admin_users(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(AdminUser))
+    users = result.scalars().all()
+    return users
+
 #get sentences
 @router.get("/sentences", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
 async def get_sentences(db: AsyncSession = Depends(get_db)):
@@ -67,3 +74,29 @@ async def get_checked_audios(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(CheckedAudio))
     checked_audios = result.scalars().all()
     return checked_audios
+
+#get statistics
+@router.get("/statistics", response_model=dict, dependencies=[Depends(get_current_admin_user)])
+async def get_admin_statistics(db: AsyncSession = Depends(get_db)):
+    stmt = text("""
+        WITH user_count AS (SELECT COUNT(*) as count FROM users),
+             sentence_count AS (SELECT COUNT(*) as count FROM sentences),
+             audio_count AS (SELECT COUNT(*) as count FROM received_audio),
+             checked_audio_count AS (SELECT COUNT(*) as count FROM checked_audio),
+             admin_count AS (SELECT COUNT(*) as count FROM admin_users)
+        SELECT 
+            (SELECT count FROM user_count) as users,
+            (SELECT count FROM sentence_count) as sentences,
+            (SELECT count FROM audio_count) as audios,
+            (SELECT count FROM checked_audio_count) as checked_audios,
+            (SELECT count FROM admin_count) as admins
+    """)
+    result = await db.execute(stmt)
+    row = result.first()
+    return {
+        "users": row.users or 0,
+        "sentences": row.sentences or 0,
+        "audios": row.audios or 0,
+        "checked_audios": row.checked_audios or 0,
+        "admins": row.admins or 0
+    }

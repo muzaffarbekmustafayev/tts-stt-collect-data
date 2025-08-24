@@ -53,14 +53,13 @@ async def auth_admin_user(response: Response, form_data: OAuth2PasswordRequestFo
 
 # Get current user
 @router.get("/me", response_model=AdminUserOut)
-async def read_users_me(current_user: AdminUserOut = Depends(get_current_user)):
+async def read_users_me(current_user: AdminUserOut = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    user = await get_admin_user_by_username(current_user["username"], db)
     content = {
-        "data": {
-            "id": current_user.id,
-            "username": current_user.username,
-            "role": current_user.role,
-            "is_active": current_user.is_active,
-            "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-        }
+        "id": user.id,
+        "username": user.username,
+        "role": user.role,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
     }
     return JSONResponse(content=content, status_code=status.HTTP_200_OK)
