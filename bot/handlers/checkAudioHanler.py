@@ -6,9 +6,9 @@ from app.db.session import AsyncSessionLocal
 from bot.utils.keyboards import get_main_menu_keyboard, get_verification_keyboard
 from bot.utils.config import KEYBOARD_NAMES
 from bot.services.user_services import get_user_by_telegramId
+from app.services.checked_audio_services import checked_audio_and_update
 from app.services.bot_services import (
     bot_get_audio_for_checking,
-    bot_create_checked_audio,
     BotServiceError
 )
 
@@ -43,14 +43,12 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
         logger.info(f"Received audio attributes: {dir(received_audio)}")
         logger.info(f"Audio path: {getattr(received_audio, 'audio_path', 'NOT_FOUND')}")
         
-        reply_markup = get_verification_keyboard()
-        
         await update.message.reply_text(
             f"🎧 Quyidagi ovozni tinglab, sifatini baholang:\n\n"
             f"📝 Matn: '{sentence.text}'\n\n"
             f"🎤 Ovoz fayli yuklanmoqda...\n\n"
             f"Ovozni tinglaganingizdan so'ng, quyidagi tugmalardan birini bosing:",
-            reply_markup=reply_markup
+            reply_markup=get_verification_keyboard()
         )
         
         # Send audio file
@@ -89,10 +87,9 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
     verification_text = update.message.text.strip()
     
     if verification_text not in [KEYBOARD_NAMES["CORRECT"], KEYBOARD_NAMES["INCORRECT"]]:
-        reply_markup = get_verification_keyboard()
         await update.message.reply_text(
             f"❌ Iltimos, quyidagi tugmalardan birini tanlang:",
-            reply_markup=reply_markup
+            reply_markup=get_verification_keyboard()
         )
         return AWAITING_VERIFICATION
     
@@ -106,21 +103,11 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         # Create checked audio record
         async with AsyncSessionLocal() as db:
-            await bot_create_checked_audio(
-                audio_id=received_audio.id,
-                checked_by=user_id,
-                is_correct=is_correct,
-                db=db
-            )
-        
-        # Success message
-        status_text = "✅ To'g'ri" if is_correct else "❌ Noto'g'ri"
-        reply_markup = get_main_menu_keyboard()
+            await checked_audio_and_update(user_id, received_audio.id, is_correct, db)
         
         await update.message.reply_text(
-            f"🎉 Ovoz sifatini baholadingiz: {status_text}\n\n"
-            f"Rahmat! Boshqa ovozlarni ham tekshirib ko'ring.",
-            reply_markup=reply_markup
+            f"Baholaganingiz uchun rahmat! 👌 Boshqa ovozlarni ham tekshirib ko'ring.",
+            reply_markup=get_main_menu_keyboard()
         )
         
         # Clear user data
@@ -129,10 +116,12 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
         
     except BotServiceError as e:
         await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
+        context.user_data.clear()
         return ConversationHandler.END
     except Exception as e:
         logger.error(f"Verification error: {e}")
         await update.message.reply_text("❌ Baholashda xatolik yuz berdi.", reply_markup=get_main_menu_keyboard())
+        context.user_data.clear()
         return ConversationHandler.END
 
 
@@ -140,11 +129,9 @@ async def cancel_checking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel current operation"""
     context.user_data.clear()
     
-    reply_markup = get_main_menu_keyboard()
-    
     await update.message.reply_text(
         "❌ Audio tekshirish bekor qilindi.",
-        reply_markup=reply_markup
+        reply_markup=get_main_menu_keyboard()
     )
     return ConversationHandler.END
 
