@@ -76,44 +76,26 @@ async def handle_audio_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         ensure_directories_exist()
         if update.message.voice:
             audio_file = await update.message.voice.get_file()
-            file_extension = ".ogg"
+            file_extension = "ogg"
         else:
             audio_file = await update.message.audio.get_file()
-            file_extension = ".mp3"
-            
+            file_extension = os.path.splitext(update.message.audio.file_path)[1].lower()
+
         user_id = context.user_data['user_id']
-        sentence_id = context.user_data['current_sentence'].id  # Fix: use dot notation
+        sentence_id = context.user_data['current_sentence'].id
         
-        # 4. Mavjud audio borligini tekshirish
+        # Mavjud audio borligini tekshirish
         async with AsyncSessionLocal() as db:
             received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
         
-        # 5. Faylni vaqtinchalik saqlash formatlash almashtirish uchun
-        with tempfile.NamedTemporaryFile(suffix=file_extension, delete=False) as temp_file:
-            await audio_file.download_to_drive(temp_file.name)
-            temp_file_path = temp_file.name
-            
-        flac_filename = f"{uuid.uuid4()}.flac"
-        flac_path = os.path.join(UPLOAD_DIR, flac_filename)
+        
+        audio_filename = f"{uuid.uuid4()}.{file_extension}"
+        audio_path = os.path.join(UPLOAD_DIR, audio_filename)
+        
+        await audio_file.download_to_drive(audio_path)
 
-        # Fix: Remove the duplicate file writing
-        try:
-            # ACC va boshqa formatlarni FLAC ga o'tkazish
-            audio = AudioSegment.from_file(temp_file_path)
-            audio.export(flac_path, format="flac")
-            logger.info(f"Audio converted from {file_extension} to FLAC successfully")
-        except Exception as e:
-            logger.error(f"Audio conversion failed: {e}")
-            # Agar conversion xatolik bersa, original faylni ishlatish
-            shutil.move(temp_file_path, flac_path)
-            logger.info(f"Using original file format: {file_extension}")
-        finally:
-            # Temporary faylni o'chirish (agar mavjud bo'lsa)
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path)
-
-        # 7. received audio update qilish
-        relative_path = f"audio/{flac_filename}"
+        # received audio update qilish
+        relative_path = f"audio/{audio_path}"
         async with AsyncSessionLocal() as db:
             await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
         

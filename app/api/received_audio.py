@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from app.schemas.received_audio import ReceivedAudioCreate, ReceivedAudioOut
+from app.schemas.received_audio import ReceivedAudioCreate, ReceivedAudioOut, ReceivedAudioOutPost
 from fastapi import APIRouter, UploadFile,  Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -10,7 +10,6 @@ from app.services.sentence_service import get_sentence_by_id
 from app.services.received_audio_services import get_audio_by_user_id_and_sentence_id, update_received_audio_path_status, get_available_receivedAudio, add_received_audio, get_received_audio_by_id
 import shutil
 import uuid
-from pydub import AudioSegment
 from pathlib import Path
 import os
 from datetime import datetime, UTC
@@ -29,7 +28,7 @@ def ensure_directories_exist():
     os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 #upload audio va received audio topib update qilish
-@router.post("/", response_model=ReceivedAudioOut)
+@router.post("/", response_model=ReceivedAudioOutPost)
 async def create_received_audio(
     user_id: int,
     sentence_id: int,
@@ -40,13 +39,11 @@ async def create_received_audio(
     logger.info(f"File content type: {file.content_type}")  # Debug uchun
     if not user_id or not sentence_id:
         raise HTTPException(status_code=400, detail="Invalid request")
-    
 
     # Papkalarni yaratish
     ensure_directories_exist()
     
     ext = Path(file.filename or "").suffix.lower()
-    # allowed_extensions = [".aac", ".mp3", ".wav", ".flac", ".ogg", ".m4a"]
 
     # 3. user va sentence aniqlash
     await get_user_by_userId(user_id, db)
@@ -56,39 +53,18 @@ async def create_received_audio(
     received_audio = await get_audio_by_user_id_and_sentence_id(user_id, sentence_id, db)
     
     # 5. Faylni vaqtinchalik saqlash formatlash almashtirish uchun
-    temp_path = os.path.join(UPLOAD_DIR, f"{uuid.uuid4()}{ext}")
-    flac_filename = f"{uuid.uuid4()}.flac"
-    flac_path = os.path.join(UPLOAD_DIR, flac_filename)
-
-    with open(temp_path, "wb") as buffer:
+    file_name = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, file_name)
+    
+    with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     await file.close()
 
-    # 6. Konvertatsiya
-    if ext == ".flac":
-        shutil.move(temp_path, flac_path)
-    else:
-        try:
-            # ACC va boshqa formatlarni FLAC ga o'tkazish
-            audio = AudioSegment.from_file(temp_path)
-            audio.export(flac_path, format="flac")
-            logger.info(f"Audio converted from {ext} to FLAC successfully")
-        except Exception as e:
-            logger.error(f"Audio conversion failed: {e}")
-            # Agar conversion xatolik bersa, original faylni ishlatish
-            shutil.move(temp_path, flac_path)
-            logger.info(f"Using original file format: {ext}")
-        finally:
-            # Temporary faylni o'chirish (agar mavjud bo'lsa)
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-
-    # 7. received audio update qilish
-    relative_path = f"audio/{flac_filename}"
+    # 6. received audio update qilish
+    relative_path = f"audio/{file_name}"
     updated_audio = await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
     
-
-    return updated_audio
+    return received_audio
 
 
 # user id bo'yicha check qilish uchun audio olish
