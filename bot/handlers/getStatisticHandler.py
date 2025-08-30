@@ -16,9 +16,9 @@ async def get_bot_statisticHandler(update: Update, context: ContextTypes.DEFAULT
             regisTime, sentAudioCount, checkedAudioCount = await get_user_statistic(user_telegram_id, db)
             
         await update.message.reply_text(f"📊 Statistika:\n\n"
-            f"⏰ Registratsiya vaqti: {regisTime.days} kun {regisTime.seconds//3600} soat {(regisTime.seconds%3600)//60} daqiqa {regisTime.seconds%60} sekund\n\n"
-            f"🎤 Ovoz yuborishlar soni: {sentAudioCount}\n"
-            f"🎧 Ovoz tekshirishlar soni: {checkedAudioCount}",
+            f"⏰ Registratsiya vaqtidan beri: {regisTime.days} kun {regisTime.seconds//3600} soat {(regisTime.seconds%3600)//60} daqiqa {regisTime.seconds%60} sekund o'tdi.\n\n"
+            f"🎤 Yuborilgan ovozlar soni: {sentAudioCount}\n"
+            f"🎧 Tekshirilgan ovozlar soni: {checkedAudioCount}",
             reply_markup=get_main_menu_keyboard()
         )
     except HTTPException as e:
