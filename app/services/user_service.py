@@ -133,6 +133,8 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
 
 async def delete_user(id: int, db: AsyncSession) -> User:
     user = await get_user_by_userId(id, db)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
     await db.delete(user)
     await db.commit()
     return user

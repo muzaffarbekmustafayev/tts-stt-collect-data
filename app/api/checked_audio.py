@@ -33,6 +33,20 @@ async def get_check_by_audio(audio_id: int, db: AsyncSession = Depends(get_db)):
     return check_list
 
 
+@router.put("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
+async def update_checked_audio_by_id(id: int, checked_audio: CheckedAudioCreate, db: AsyncSession = Depends(get_db)):
+    checked_audio = await get_checked_audio_by_id(id, db)
+    checked_audio.checked_by = checked_audio.checked_by
+    checked_audio.is_correct = checked_audio.is_correct
+    checked_audio.comment = checked_audio.comment
+    checked_audio.status = checked_audio.status
+    await db.commit()
+    await db.refresh(checked_audio)
+    await db.commit()
+    return checked_audio
+
+
+
 @router.delete("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
 async def delete_checked_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
     checked_audio = await get_checked_audio_by_id(id, db)

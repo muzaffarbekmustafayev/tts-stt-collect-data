@@ -13,7 +13,7 @@ logger = get_logger("api.sentence")
 router = APIRouter(prefix="/sentences", tags=["Sentences"])
 
 # add sentence
-@router.post("/", response_model=SentenceOut)
+@router.post("/", response_model=SentenceOut, dependencies=[Depends(get_current_admin_user)])
 async def create_sentence(sentence: SentenceCreate, db: AsyncSession = Depends(get_db)):
     new_sentence = Sentence(**sentence.model_dump())
     db.add(new_sentence)
@@ -38,8 +38,7 @@ async def delete_sentence_by_id(id: int, db: AsyncSession = Depends(get_db)):
     return sentence
 
 
-# @router.post("/file", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
-@router.post("/file", response_model=list[SentenceOut])
+@router.post("/file", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
 async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(get_db)):
     if file.content_type not in ("text/plain", None):
         raise HTTPException(status_code=400, detail="Only text files are supported")
@@ -64,3 +63,13 @@ async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(g
     await db.commit()
 
     return sentences
+
+
+@router.put("/{id}", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
+async def update_sentence_by_id(id: int, sentence: SentenceCreate, db: AsyncSession = Depends(get_db)):
+    sentence = await get_sentence_by_id(id, db)
+    sentence.text = sentence.text
+    sentence.language = sentence.language
+    await db.commit()
+    await db.refresh(sentence)
+    return sentence
