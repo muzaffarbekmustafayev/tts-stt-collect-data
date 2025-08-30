@@ -6,6 +6,8 @@ from app.config import AUDIO_DIR
 from contextlib import asynccontextmanager
 import asyncio
 from bot.main_bot import create_bot_application
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Setup logging
 setup_logging()
@@ -28,6 +30,22 @@ async def lifespan(app: FastAPI):
         logger.info("Bot stopped")
 
 app = FastAPI(title="TTS-STT data collection api", lifespan=lifespan)
+
+origins = [
+    "http://localhost:5173",
+    "https://8ff35b3cc499.ngrok-free.app",
+    "https://asror-qobulov.jprq.site",
+    "http://asror-qobulov.jprq.site",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins= ["*"],  # TODO: change to frontend domeni in production
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 # Mount static files
 app.mount("/audio", StaticFiles(directory=AUDIO_DIR), name="audio")

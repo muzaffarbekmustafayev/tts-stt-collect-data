@@ -29,23 +29,9 @@ async def get_user_by_telegram_id(telegram_id: str, db: AsyncSession = Depends(g
 async def get_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
     user = await get_user_by_userId(id, db)
     return user
-  
-# get all users
-@router.get("/", response_model=list[UserOut])
-async def get_all_users(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User))
-    users = result.scalars().all()
-    logger.info(f"Found {len(users)} users")
-    return users
-  
+
 # update user
 @router.put("/{id}", response_model=UserOut)
 async def update_user_by_id(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     user = await update_user(id, user_data, db)
-    return user
-
-# delete user
-@router.delete("/{id}", response_model=UserOut, dependencies=[Depends(get_current_admin_user)])
-async def delete_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
-    user = await delete_user(id, db)
     return user

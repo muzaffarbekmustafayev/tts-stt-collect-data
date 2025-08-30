@@ -106,6 +106,17 @@ async def get_audio_by_user(user_id: int, db: AsyncSession = Depends(get_db)):
     received_audio.sentence = sentence.text
     return received_audio
 
+# update received audio by id
+@router.put("/{id}", response_model=ReceivedAudioOut, dependencies=[Depends(get_current_admin_user)])
+async def update_received_audio_by_id(id: int, received_audio: ReceivedAudioCreate, db: AsyncSession = Depends(get_db)):
+    received_audio = await get_received_audio_by_id(id, db)
+    received_audio.status = received_audio.status
+    received_audio.audio_path = received_audio.audio_path
+    await db.commit()
+    await db.refresh(received_audio)
+    return received_audio
+
+
 # delete received audio
 @router.delete("/{id}", response_model=ReceivedAudioOut, dependencies=[Depends(get_current_admin_user)])
 async def delete_received_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
