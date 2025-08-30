@@ -21,3 +21,16 @@ class ReceivedAudioOut(BaseModel):
 
     class Config:
         from_attributes = True
+        
+        
+class ReceivedAudioOutPost(BaseModel):
+    id: int
+    user_id: int
+    sentence_id: int
+    audio_path: Optional[str] = None
+    duration: Optional[int] = None
+    status: AudioStatus
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
