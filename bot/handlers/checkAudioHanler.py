@@ -68,18 +68,19 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
             except Exception as e:
                 logger.error(f"Audio file send error: {e}")
                 await update.message.reply_text(
-                    "❌ Ovoz faylini yuklashda xatolik yuz berdi."
+                    "❌ Ovoz faylini yuklashda xatolik yuz berdi.",
+                    reply_markup=get_main_menu_keyboard()
                 )
                 return ConversationHandler.END
         
         return AWAITING_VERIFICATION
             
     except BotServiceError as e:
-        await update.message.reply_text(f"❌ {e.message}")
+        await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
     except Exception as e:
         logger.error(f"Get audio for checking error: {e}")
-        await update.message.reply_text("❌ Server bilan bog'lanishda xatolik.")
+        await update.message.reply_text("❌ Server bilan bog'lanishda xatolik.", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
 
 
@@ -127,11 +128,11 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
         return ConversationHandler.END
         
     except BotServiceError as e:
-        await update.message.reply_text(f"❌ {e.message}")
+        await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
     except Exception as e:
         logger.error(f"Verification error: {e}")
-        await update.message.reply_text("❌ Baholashda xatolik yuz berdi.")
+        await update.message.reply_text("❌ Baholashda xatolik yuz berdi.", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
 
 

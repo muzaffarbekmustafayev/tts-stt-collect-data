@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 from app.db.session import AsyncSessionLocal
-from bot.utils.keyboards import get_main_menu_keyboard
+from bot.utils.keyboards import get_main_menu_keyboard, get_confirmation_keyboard
 from bot.utils.config import KEYBOARD_NAMES
 from bot.services.user_services import get_user_by_telegramId
 from app.services.received_audio_services import get_audio_by_user_id_and_sentence_id, update_received_audio_path_status
@@ -52,11 +52,11 @@ async def get_sentence_and_audio(update: Update, context: ContextTypes.DEFAULT_T
         return AWAITING_AUDIO
             
     except BotServiceError as e:
-        await update.message.reply_text(f"❌ {e.message}")
+        await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
     except Exception as e:
         logger.error(f"Get sentence error: {e}")
-        await update.message.reply_text("❌ Server bilan bog'lanishda xatolik.")
+        await update.message.reply_text("❌ Server bilan bog'lanishda xatolik.", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
 
 
@@ -95,43 +95,72 @@ async def handle_audio_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         await audio_file.download_to_drive(audio_path)
 
         # received audio update qilish
-        relative_path = f"audio/{audio_path}"
-        async with AsyncSessionLocal() as db:
-            await update_received_audio_path_status(received_audio_id=received_audio.id, file_path=relative_path, db=db)
+        relative_path = f"audio/{audio_filename}"
         
-        # Success message
-        reply_markup = get_main_menu_keyboard()
+        context.user_data['relative_path'] = relative_path
+        context.user_data['audio_path'] = audio_path
+        context.user_data['received_audio_id'] = received_audio.id
+        
         await update.message.reply_text(
-            "✅ Ovoz muvaffaqiyatli yuklandi!",
-            reply_markup=reply_markup
+            "Ovozli xabarni qabul qilinishi uchun tasdiqlashni bosing!",
+            reply_markup=get_confirmation_keyboard()
         )
         
-        # Clear user data
-        context.user_data.clear()
-        return ConversationHandler.END
+        return CONFIRMATION
         
     except Exception as e:
         logger.error(f"Audio upload error: {e}")
-        await update.message.reply_text("❌ Ovoz yuklashda xatolik yuz berdi.")
+        await update.message.reply_text("❌ Ovoz yuklashda xatolik yuz berdi.", reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
 
+async def handle_audio_confirmation(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle audio confirmation"""
+    
+    confirmation_text = update.message.text.strip()
+    
+    if confirmation_text not in [KEYBOARD_NAMES["CANCEL"], KEYBOARD_NAMES["CONFIRMATION"]]:
+        await update.message.reply_text(
+            "❌ Iltimos, quyidagi tugmalardan birini tanlang:",
+            reply_markup=get_confirmation_keyboard()
+        )
+        return CONFIRMATION
+    
+    if confirmation_text == KEYBOARD_NAMES["CANCEL"]:
+        audio_path = context.user_data['audio_path']
+        if os.path.exists(audio_path):
+            os.remove(audio_path)
+        await update.message.reply_text(
+            "❌ Amal bekor qilindi.",
+            reply_markup=get_main_menu_keyboard()
+        )
+        return ConversationHandler.END
+        
+    else:
+        relative_path = context.user_data['relative_path']
+        received_audio_id = context.user_data['received_audio_id']
+        async with AsyncSessionLocal() as db:
+            await update_received_audio_path_status(received_audio_id=received_audio_id, file_path=relative_path, db=db)
+        
+        await update.message.reply_text(
+            "✅ Ovoz muvaffaqiyatli saqlandi!",
+            reply_markup=get_main_menu_keyboard()
+        )
+        context.user_data.clear()
+        return ConversationHandler.END
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Cancel current operation"""
-    context.user_data.clear()
-    
-    from bot.utils.keyboards import get_cancel_keyboard
-    reply_markup = get_main_menu_keyboard()
-    
+    context.user_data.clear()    
     await update.message.reply_text(
         "❌ Amal bekor qilindi.",
-        reply_markup=reply_markup
+        reply_markup=get_main_menu_keyboard()
     )
     return ConversationHandler.END
 
 
 AWAITING_AUDIO = 1
+CONFIRMATION = 2
 
 def get_audio_handler(app: Application):
     """Get the audio."""
@@ -141,6 +170,11 @@ def get_audio_handler(app: Application):
         states={
             AWAITING_AUDIO: [
                 MessageHandler(filters.VOICE | filters.AUDIO, handle_audio_upload),
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CHECK_AUDIO']}$"), handle_audio_confirmation),
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)
+            ],
+            CONFIRMATION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_audio_confirmation),
                 MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)
             ],
         },

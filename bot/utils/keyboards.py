@@ -37,3 +37,10 @@ def get_skip_keyboard():
         [KeyboardButton(KEYBOARD_NAMES["SKIP"])]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+def get_confirmation_keyboard():
+    """Get confirmation keyboard"""
+    keyboard = [
+        [KeyboardButton(KEYBOARD_NAMES["CANCEL"]), KeyboardButton(KEYBOARD_NAMES["CONFIRMATION"])]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)

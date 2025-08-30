@@ -10,4 +10,5 @@ KEYBOARD_NAMES = {
   "FEMALE": "Ayol",
   "CORRECT": "✅ To'g'ri",
   "INCORRECT": "❌ Noto'g'ri",
+  "CONFIRMATION": "✅ Tasdiqlash",
 }
