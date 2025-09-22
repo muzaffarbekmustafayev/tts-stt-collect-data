@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, Request, Query, dependencies
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
@@ -13,7 +13,7 @@ from app.schemas.user import UserOut, UserCreate
 from app.models.sentence import Sentence
 from app.schemas.sentence import SentenceOut
 from app.models.received_audio import ReceivedAudio
-from app.schemas.received_audio import ReceivedAudioOut
+from app.schemas.received_audio import ReceivedAudioOut, ReceivedAudioOutPost
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioOut
 
@@ -129,8 +129,8 @@ async def get_admin_statistics(db: AsyncSession = Depends(get_db)):
     return {
         "users": [UserOut.model_validate(user).model_dump() for user in users],
         "sentences": [SentenceOut.model_validate(sentence).model_dump() for sentence in sentences],
-        "audios": [ReceivedAudioOut.model_validate(audio).model_dump() for audio in audios],
+        "audios": [ReceivedAudioOutPost.model_validate(audio).model_dump() for audio in audios],
         "checked_audios": [CheckedAudioOut.model_validate(audio).model_dump() for audio in checked_audios],
-        "admins": [AdminUserOut.model_validate(admin).model_dump() for admin in admins],
+        "admin_users": [AdminUserOut.model_validate(admin).model_dump() for admin in admins],
         "statistics": statistics
     }
