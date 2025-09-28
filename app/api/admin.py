@@ -13,9 +13,10 @@ from app.schemas.user import UserOut, UserCreate
 from app.models.sentence import Sentence
 from app.schemas.sentence import SentenceOut
 from app.models.received_audio import ReceivedAudio
-from app.schemas.received_audio import ReceivedAudioOut, ReceivedAudioOutPost
+from app.schemas.received_audio import ReceivedAudioOut, ReceivedAudioOutPost, ReceivedAudioCreate, ReceivedAudioOutPut
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioOut
+from app.services.received_audio_services import get_received_audio_by_id
 
 logger = get_logger("api.admin")
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -82,6 +83,18 @@ async def get_sentences(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)
 async def get_audios(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
     return await get_all_audios(page, limit, db)
 
+@router.put("/audios/{id}", response_model=ReceivedAudioOutPost, dependencies=[Depends(get_current_admin_user)])
+async def update_received_audio_by_id(id: int, received_audio: ReceivedAudioOutPut, db: AsyncSession = Depends(get_db)):
+    audio = await get_received_audio_by_id(id, db)
+    if received_audio.status:
+        audio.status = received_audio.status
+    if received_audio.audio_path:
+        audio.audio_path = received_audio.audio_path
+    audio.sentence_id = received_audio.sentence_id
+    audio.user_id = received_audio.user_id
+    await db.commit()
+    await db.refresh(audio)
+    return audio
 # ======================= Checked Audio API ===========================
 #get checked audios
 @router.get("/checked-audios", response_model=list[CheckedAudioOut], dependencies=[Depends(get_current_admin_user)])

@@ -146,9 +146,42 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
 
 
 async def delete_user(id: int, db: AsyncSession) -> User:
+    """
+    Delete a user if they have no associated audio records.
+    Checks for both received audio contributions and checked audio records.
+    """
+    # Get the user first
     user = await get_user_by_userId(id, db)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    await db.delete(user)
-    await db.commit()
-    return user
+    logger.info(f"Attempting to delete user: {user.telegram_id} (ID: {id})")
+
+    # Check if user has any received audio records using exists() for efficiency
+    from sqlalchemy.sql import exists
+    received_audio_exists_query = select(exists().where(ReceivedAudio.user_id == id))
+    received_audio_exists = await db.execute(received_audio_exists_query)
+    if received_audio_exists.scalar():
+        logger.warning(f"Cannot delete user {id}: has received audio records")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete user: user has contributed audio recordings that must be preserved"
+        )
+
+    # Check if user has any checked audio records using exists() for efficiency
+    checked_audio_exists_query = select(exists().where(CheckedAudio.checked_by == id))
+    checked_audio_exists = await db.execute(checked_audio_exists_query)
+    if checked_audio_exists.scalar():
+        logger.warning(f"Cannot delete user {id}: has checked audio records")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot delete user: user has reviewed audio recordings that must be preserved"
+        )
+
+    # If no related records exist, proceed with deletion
+    try:
+        await db.delete(user)
+        await db.commit()
+        logger.info(f"Successfully deleted user: {user.telegram_id} (ID: {id})")
+        return user
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Failed to delete user {id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to delete user")

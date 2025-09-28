@@ -4,6 +4,7 @@ from fastapi import APIRouter, UploadFile,  Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.received_audio import ReceivedAudio
+from app.models.checked_audio import CheckedAudio
 from app.core.logging import get_logger
 from app.services.user_service import get_user_by_userId, check_user_check_audio_limit
 from app.services.sentence_service import get_sentence_by_id
@@ -99,6 +100,13 @@ async def delete_received_audio_by_id(id: int, db: AsyncSession = Depends(get_db
     received_audio = await get_received_audio_by_id(id, db)
     if not received_audio:
         raise HTTPException(status_code=404, detail="Audio not found")
+    stmt = select(CheckedAudio).where(CheckedAudio.audio_id == received_audio.id)
+    result = await db.execute(stmt)
+    checked_audio = result.scalar_one_or_none()
+    if checked_audio:
+        raise HTTPException(status_code=400, detail="You can't delete this audio because it has in checked_audio table")
+    if received_audio.audio_path:
+        os.remove(os.path.join(MEDIA_DIR, received_audio.audio_path))
     await db.delete(received_audio)
     await db.commit()
     return received_audio

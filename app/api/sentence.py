@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.models.sentence import Sentence
 from app.schemas.sentence import SentenceCreate, SentenceOut
 from app.core.logging import get_logger
+from app.models.received_audio import ReceivedAudio
 
 from app.services.user_service import get_user_by_userId, check_user_sent_audio_over_limit
 from app.services.sentence_service import get_available_sentence, get_sentence_by_id
@@ -33,6 +35,13 @@ async def get_user_sentence(user_id: int, db: AsyncSession = Depends(get_db)):
 @router.delete("/{id}", response_model=SentenceOut, dependencies=[Depends(get_current_admin_user)])
 async def delete_sentence_by_id(id: int, db: AsyncSession = Depends(get_db)):
     sentence = await get_sentence_by_id(id, db)
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+    stmt = select(ReceivedAudio).where(ReceivedAudio.sentence_id == id)
+    result = await db.execute(stmt)
+    received_audio = result.scalar_one_or_none()
+    if received_audio:
+        raise HTTPException(status_code=400, detail="You can't delete this sentence because it has in received_audio table")
     await db.delete(sentence)
     await db.commit()
     return sentence
