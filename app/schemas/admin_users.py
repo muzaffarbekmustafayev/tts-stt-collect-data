@@ -8,6 +8,12 @@ class AdminUserCreate(BaseModel):
     is_active: Optional[bool] = True
     role: Optional[str] = "admin"
 
+class AdminUserUpdate(BaseModel):
+    username: str
+    password: Optional[str] = None
+    is_active: Optional[bool] = True
+    role: Optional[str] = "admin"
+
 class AdminUserOut(BaseModel):
     id: int
     username: str

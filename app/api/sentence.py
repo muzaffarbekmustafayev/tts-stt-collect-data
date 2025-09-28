@@ -65,11 +65,22 @@ async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(g
     return sentences
 
 
-@router.put("/{id}", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
+@router.put("/{id}", response_model=SentenceOut, dependencies=[Depends(get_current_admin_user)])
 async def update_sentence_by_id(id: int, sentence: SentenceCreate, db: AsyncSession = Depends(get_db)):
-    sentence = await get_sentence_by_id(id, db)
-    sentence.text = sentence.text
-    sentence.language = sentence.language
+    savedSentence = await get_sentence_by_id(id, db)
+    if not savedSentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
+    savedSentence.text = sentence.text
+    if sentence.language:
+        savedSentence.language = sentence.language
     await db.commit()
-    await db.refresh(sentence)
+    await db.refresh(savedSentence)
+    return savedSentence
+
+
+@router.get("/by-id/{id}", response_model=SentenceOut)
+async def get_sentence_by_id_endpoint(id: int, db: AsyncSession = Depends(get_db)):
+    sentence = await get_sentence_by_id(id, db)
+    if not sentence:
+        raise HTTPException(status_code=404, detail="Sentence not found")
     return sentence

@@ -57,6 +57,13 @@ async def create_user(user: UserCreate, db: AsyncSession) -> User:
         raise HTTPException(status_code=400, detail="Name must be between 3 and 100 characters")
     if len(new_user.info) > 500:
         raise HTTPException(status_code=400, detail="Info must be less than 500 characters")
+    if new_user.telegram_id:
+        new_user.telegram_id = new_user.telegram_id.strip()
+        if len(new_user.telegram_id) < 5 or len(new_user.telegram_id) > 100:
+            raise HTTPException(status_code=400, detail="Telegram ID must be between 5 and 100 characters")
+        telegram_ids = await db.execute(select(User.telegram_id))
+        if new_user.telegram_id in [u[0] for u in telegram_ids.all()]:
+            raise HTTPException(status_code=400, detail="Telegram ID already exists")
     db.add(new_user)
     try:
         await db.commit()
@@ -86,6 +93,12 @@ async def update_user(id: int, user_data: UserCreate, db: AsyncSession) -> User:
     if user_data.info:
         db_user.info = user_data.info
     if user_data.telegram_id:
+        user_data.telegram_id = user_data.telegram_id.strip()
+        if len(user_data.telegram_id) < 5 or len(user_data.telegram_id) > 100:
+            raise HTTPException(status_code=400, detail="Telegram ID must be between 5 and 100 characters")
+        telegram_ids = await db.execute(select(User.telegram_id).where(User.id != id))
+        if user_data.telegram_id in [u[0] for u in telegram_ids.all()]:
+            raise HTTPException(status_code=400, detail="Telegram ID already exists")
         db_user.telegram_id = user_data.telegram_id
     
     await db.commit()

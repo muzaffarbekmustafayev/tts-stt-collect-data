@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.db.session import get_db
@@ -50,6 +50,8 @@ async def update_checked_audio_by_id(id: int, checked_audio: CheckedAudioCreate,
 @router.delete("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
 async def delete_checked_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
     checked_audio = await get_checked_audio_by_id(id, db)
+    if not checked_audio:
+        raise HTTPException(status_code=404, detail="Checked audio not found")
     await db.delete(checked_audio)
     await db.commit()
     return checked_audio

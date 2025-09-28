@@ -3,7 +3,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from app.models.admin_users import AdminUser
-from app.schemas.admin_users import AdminUserCreate
+from app.schemas.admin_users import AdminUserCreate, AdminUserUpdate
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
@@ -42,9 +42,16 @@ async def get_admin_user_by_username(username: str, db: AsyncSession) -> AdminUs
 
 async def create_admin_user(user: AdminUserCreate, db: AsyncSession) -> AdminUser:
     new_user = AdminUser(**user.model_dump())
+    new_user.username = new_user.username.strip()
+    if len(new_user.username)< 3 or len(new_user.username) > 50:
+        raise HTTPException(status_code=400, detail="Username must be between 3 and 50 characters long")
+    usernames = await db.execute(select(AdminUser.username))
+    if new_user.username in [u[0] for u in usernames.all()]:
+        raise HTTPException(status_code=400, detail="Username already exists")
     if len(new_user.password) < 8:
         raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
     new_user.password = hash_password(new_user.password)
+    
     db.add(new_user)
     try:
         await db.commit()
@@ -54,17 +61,25 @@ async def create_admin_user(user: AdminUserCreate, db: AsyncSession) -> AdminUse
         await db.rollback()
         raise HTTPException(status_code=400, detail="User already exists")
 
-async def update_admin_user(id: int, user_data: AdminUserCreate, db: AsyncSession) -> AdminUser:
-    user = await get_admin_user_by_id(id, db)
-    if len(user_data.password) < 8:
-        raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
-    user.username = user_data.username
-    user.password = hash_password(user_data.password)
-    user.role = user_data.role
-    user.is_active = user_data.is_active
+async def update_admin_user(id: int, user_data: AdminUserUpdate, db: AsyncSession) -> AdminUser:
+    admin = await get_admin_user_by_id(id, db)
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+    if len(user_data.username.strip()) < 3 or len(user_data.username.strip()) > 50:
+        raise HTTPException(status_code=400, detail="Username must be between 3 and 50 characters long")
+    usernames = await db.execute(select(AdminUser.username).where(AdminUser.id != id))
+    if user_data.username.strip() in [u[0] for u in usernames.all()]:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    if user_data.password:
+        if len(user_data.password) < 8:
+            raise HTTPException(status_code=400, detail="Password must be at least 8 characters long")
+        admin.password = hash_password(user_data.password)
+    admin.username = user_data.username.strip()
+    admin.role = user_data.role
+    admin.is_active = user_data.is_active
     await db.commit()
-    await db.refresh(user)
-    return user
+    await db.refresh(admin)
+    return admin
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
@@ -82,16 +97,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
     
     user = await get_admin_user_by_username(username, db)
-    return {"username": user.username, "role": user.role}
+    return {"username": user.username, "role": user.role, "is_active": user.is_active}
 
 
 def get_current_admin_user (current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user["role"] != "admin" and current_user["role"] != "superadmin" and current_user["is_active"] == False:
+    if current_user["role"].lower() != "admin" and current_user["role"].lower() != "superadmin" and current_user["is_active"] == False:
         raise HTTPException(status_code=403, detail="You don't have permission to access this resource")
     return current_user
 
 def get_current_superadmin_user (current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    if current_user["role"] != "superadmin":
+    if current_user["role"].lower() != "superadmin":
         raise HTTPException(status_code=403, detail="You don't have permission to access this resource")
     return current_user
 
@@ -119,3 +134,12 @@ async def get_all_audios(page: int, limit: int, db: AsyncSession):
     result = await db.execute(stmt)
     audios = result.all()
     return audios
+
+
+async def delete_admin_user(id: int, db: AsyncSession) -> AdminUser:
+    admin_user = await get_admin_user_by_id(id, db)
+    if not admin_user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    await db.delete(admin_user)
+    await db.commit()
+    return admin_user

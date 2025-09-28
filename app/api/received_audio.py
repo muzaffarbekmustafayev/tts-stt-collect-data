@@ -94,9 +94,21 @@ async def update_received_audio_by_id(id: int, received_audio: ReceivedAudioCrea
 
 
 # delete received audio
-@router.delete("/{id}", response_model=ReceivedAudioOut, dependencies=[Depends(get_current_admin_user)])
+@router.delete("/{id}", response_model=ReceivedAudioOutPost, dependencies=[Depends(get_current_admin_user)])
 async def delete_received_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
     received_audio = await get_received_audio_by_id(id, db)
+    if not received_audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
     await db.delete(received_audio)
     await db.commit()
+    return received_audio
+
+
+@router.get("/by-id/{id}", response_model=ReceivedAudioOut)
+async def get_audio_by_id_endpoint(id: int, db: AsyncSession = Depends(get_db)):
+    received_audio = await get_received_audio_by_id(id, db)
+    if not received_audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
+    sentence = await get_sentence_by_id(received_audio.sentence_id, db)
+    received_audio.sentence = sentence.text
     return received_audio

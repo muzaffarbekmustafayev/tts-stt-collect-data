@@ -5,8 +5,8 @@ from app.db.session import get_db
 from sqlalchemy import select, func, text
 from app.core.logging import get_logger
 from app.models.admin_users import AdminUser
-from app.schemas.admin_users import AdminUserCreate, AdminUserOut
-from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id, get_all_audios
+from app.schemas.admin_users import AdminUserCreate, AdminUserOut, AdminUserUpdate
+from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id, get_all_audios, delete_admin_user
 from app.services.user_service import update_user, delete_user
 from app.models.user import User
 from app.schemas.user import UserOut, UserCreate
@@ -31,20 +31,21 @@ async def get_admin_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=
 # add admin user
 @router.post("/", response_model=AdminUserOut, dependencies=[Depends(get_current_superadmin_user)])
 async def create_admin_user_api(user: AdminUserCreate, db: AsyncSession = Depends(get_db)):
+    print("Creating admin user:", user)
     new_user = await create_admin_user(user, db)
     return new_user
 
 # update admin user
 @router.put("/{id}", response_model=AdminUserOut, dependencies=[Depends(get_current_superadmin_user)])
-async def update_admin_user_by_id_api(id: int, user_data: AdminUserCreate, db: AsyncSession = Depends(get_db)):
+async def update_admin_user_by_id_api(id: int, user_data: AdminUserUpdate, db: AsyncSession = Depends(get_db)):
     user = await update_admin_user(id, user_data, db)
     return user
 
 # # delete admin user
-# @router.delete("/{id}", dependencies=[Depends(get_current_superadmin_user)])
-# async def delete_admin_user_by_id_api(id: int, db: AsyncSession = Depends(get_db)):
-#     await delete_admin_user(id, db)
-#     return {"message": "Admin user deleted successfully"}
+@router.delete("/{id}", dependencies=[Depends(get_current_superadmin_user)])
+async def delete_admin_user_by_id_api(id: int, db: AsyncSession = Depends(get_db)):
+    await delete_admin_user(id, db)
+    return {"message": "Admin user deleted successfully"}
 
 
 #  ==================== User API  ===========================
@@ -114,14 +115,14 @@ async def get_admin_statistics(db: AsyncSession = Depends(get_db), current_user:
         "checked_audios": row_data.checked_audios or 0,
         "admins": row_data.admins or 0
     }
-    users_result = await db.execute(select(User).limit(10))
+    users_result = await db.execute(select(User).limit(20))
     users = users_result.scalars().all()
-    sentences_result = await db.execute(select(Sentence).limit(10))
+    sentences_result = await db.execute(select(Sentence).limit(20))
     sentences = sentences_result.scalars().all()
-    audios = await get_all_audios(1, 10, db)
-    checked_audios_result = await db.execute(select(CheckedAudio).limit(10))
+    audios = await get_all_audios(1, 20, db)
+    checked_audios_result = await db.execute(select(CheckedAudio).limit(20))
     checked_audios = checked_audios_result.scalars().all()
-    admins_result = await db.execute(select(AdminUser).limit(10))
+    admins_result = await db.execute(select(AdminUser).limit(20))
     admins = admins_result.scalars().all()
     return {
         "users": [UserOut.model_validate(user).model_dump() for user in users],
