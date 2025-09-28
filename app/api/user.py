@@ -14,7 +14,7 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 # add user
 @router.post("/", response_model=UserOut)
-async def create_user(user: UserCreate, db: AsyncSession = Depends(get_db)):
+async def create_user_endpoint(user: UserCreate, db: AsyncSession = Depends(get_db)):
     new_user = await create_user(user, db)
     return new_user
 

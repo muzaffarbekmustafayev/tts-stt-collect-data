@@ -29,11 +29,17 @@ async def lifespan(app: FastAPI):
         await bot_application.shutdown()
         logger.info("Bot stopped")
 
-app = FastAPI(title="TTS-STT data collection api", lifespan=lifespan)
+app = FastAPI(
+    title="TTS-STT data collection api", 
+    lifespan=lifespan,
+)
+    # docs_url=None,
+    # redoc_url=None,
+    # openapi_url=None
 
 origins = [
     "http://localhost:5173",
-    "https://8ff35b3cc499.ngrok-free.app",
+    "https://70c7c8293365.ngrok-free.app",
     "https://asror-qobulov.jprq.site",
     "http://asror-qobulov.jprq.site",
 ]

@@ -47,6 +47,7 @@ async def check_user_check_audio_limit(user_id: int, db: AsyncSession) -> bool:
     return check_audio_limit
 
 async def create_user(user: UserCreate, db: AsyncSession) -> User:
+    print("user", user)
     new_user = User(**user.model_dump())
     if new_user.age < 1 or new_user.age > 120:
         raise HTTPException(status_code=400, detail="Age must be between 1 and 120")

@@ -6,7 +6,7 @@ from sqlalchemy import select, func, text
 from app.core.logging import get_logger
 from app.models.admin_users import AdminUser
 from app.schemas.admin_users import AdminUserCreate, AdminUserOut
-from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id
+from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id, get_all_audios
 from app.services.user_service import update_user, delete_user
 from app.models.user import User
 from app.schemas.user import UserOut, UserCreate
@@ -57,9 +57,9 @@ async def get_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db
 
 # update user by id
 @router.put("/users/{id}", response_model=UserOut, dependencies=[Depends(get_current_admin_user)])
-async def update_user_by_id(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
-    redirect_url = f"/users/{id}"
-    return RedirectResponse(url=redirect_url, status_code=303)
+async def update_user_by_id_to_admin(id: int, user_data: UserCreate, db: AsyncSession = Depends(get_db)):
+    user = await update_user(id, user_data, db)
+    return user
 
 # delete user by id
 @router.delete("/users/{id}", dependencies=[Depends(get_current_admin_user)])
@@ -79,9 +79,7 @@ async def get_sentences(page: int = Query(1, ge=1), limit: int = Query(10, ge=1)
 #get audios
 @router.get("/audios", response_model=list[ReceivedAudioOut], dependencies=[Depends(get_current_admin_user)])
 async def get_audios(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(ReceivedAudio).offset((page - 1) * limit).limit(limit))
-    audios = result.scalars().all()
-    return audios
+    return await get_all_audios(page, limit, db)
 
 # ======================= Checked Audio API ===========================
 #get checked audios
@@ -93,7 +91,7 @@ async def get_checked_audios(page: int = Query(1, ge=1), limit: int = Query(10, 
 
 # ======================= Statistics API ===========================
 @router.get("/statistics", response_model=dict, dependencies=[Depends(get_current_admin_user)])
-async def get_admin_statistics(db: AsyncSession = Depends(get_db)):
+async def get_admin_statistics(db: AsyncSession = Depends(get_db), current_user: dict = Depends(get_current_admin_user)):
     stmt = text("""
         WITH user_count AS (SELECT COUNT(*) as count FROM users),
              sentence_count AS (SELECT COUNT(*) as count FROM sentences),
@@ -120,8 +118,7 @@ async def get_admin_statistics(db: AsyncSession = Depends(get_db)):
     users = users_result.scalars().all()
     sentences_result = await db.execute(select(Sentence).limit(10))
     sentences = sentences_result.scalars().all()
-    audios_result = await db.execute(select(ReceivedAudio).limit(10))
-    audios = audios_result.scalars().all()
+    audios = await get_all_audios(1, 10, db)
     checked_audios_result = await db.execute(select(CheckedAudio).limit(10))
     checked_audios = checked_audios_result.scalars().all()
     admins_result = await db.execute(select(AdminUser).limit(10))
@@ -129,8 +126,9 @@ async def get_admin_statistics(db: AsyncSession = Depends(get_db)):
     return {
         "users": [UserOut.model_validate(user).model_dump() for user in users],
         "sentences": [SentenceOut.model_validate(sentence).model_dump() for sentence in sentences],
-        "audios": [ReceivedAudioOutPost.model_validate(audio).model_dump() for audio in audios],
+        "audios": [ReceivedAudioOut.model_validate(audio).model_dump() for audio in audios],
         "checked_audios": [CheckedAudioOut.model_validate(audio).model_dump() for audio in checked_audios],
         "admin_users": [AdminUserOut.model_validate(admin).model_dump() for admin in admins],
+        "current_admin": current_user,
         "statistics": statistics
     }

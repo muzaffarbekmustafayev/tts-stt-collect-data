@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 from app.models.admin_users import AdminUser
@@ -113,3 +113,9 @@ def hash_password(password: str):
 def get_payload(token: str):
     payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     return payload
+
+async def get_all_audios(page: int, limit: int, db: AsyncSession):
+    stmt = text(f"SELECT received_audio.*, sentences.text AS sentence FROM received_audio JOIN sentences ON received_audio.sentence_id = sentences.id ORDER BY received_audio.created_at DESC OFFSET {(page - 1) * limit} LIMIT {limit}")
+    result = await db.execute(stmt)
+    audios = result.all()
+    return audios
