@@ -201,6 +201,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
         .where(ReceivedAudio.id.not_in(user_audio_checked_subq))
         .where(ReceivedAudio.user_id != user_id)
         .where(ReceivedAudio.audio_path.isnot(None))  # Add condition: audio_path must not be null
+        .order_by(func.random())
         .limit(1)
     )
 
@@ -230,6 +231,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
               ReceivedAudio.audio_path.isnot(None)  # Add condition: audio_path must not be null
           )
       )
+      .order_by(func.random())
       .limit(1)
     )
     result = await db.execute(stmt)
@@ -256,6 +258,7 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
               ReceivedAudio.audio_path.isnot(None)  # Add condition: audio_path must not be null
           )
       )
+      .order_by(func.random())
       .limit(1)
     )
     result = await db.execute(stmt)

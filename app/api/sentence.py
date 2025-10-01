@@ -1,3 +1,5 @@
+import csv
+import io
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -47,24 +49,62 @@ async def delete_sentence_by_id(id: int, db: AsyncSession = Depends(get_db)):
     return sentence
 
 
+# @router.post("/file", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
+# async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(get_db)):
+#     if file.content_type not in ("text/plain", None):
+#         raise HTTPException(status_code=400, detail="Only text files are supported")
+
+#     raw_bytes = await file.read()
+#     try:
+#         content = raw_bytes.decode("utf-8")
+#     except UnicodeDecodeError:
+#         # fallback for common encodings if needed
+#         content = raw_bytes.decode("utf-8", errors="ignore")
+
+#     lines = [line.strip() for line in content.splitlines()]
+#     texts = [line for line in lines if line]
+
+#     if not texts:
+#         raise HTTPException(status_code=400, detail="The uploaded file is empty or contains no valid lines")
+
+#     sentences = [Sentence(text=text, language="uz") for text in texts]
+
+#     db.add_all(sentences)
+#     await db.flush()
+#     await db.commit()
+
+#     return sentences
+
+
 @router.post("/file", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
 async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(get_db)):
-    if file.content_type not in ("text/plain", None):
-        raise HTTPException(status_code=400, detail="Only text files are supported")
+    # faqat csv fayllarni qabul qilish
+    if file.content_type not in ("text/csv", "application/vnd.ms-excel"):
+        raise HTTPException(status_code=400, detail="Only CSV files are supported")
 
     raw_bytes = await file.read()
     try:
-        content = raw_bytes.decode("utf-8")
+        decoded_content = raw_bytes.decode("utf-8")
     except UnicodeDecodeError:
-        # fallback for common encodings if needed
-        content = raw_bytes.decode("utf-8", errors="ignore")
+        decoded_content = raw_bytes.decode("utf-8", errors="ignore")
 
-    lines = [line.strip() for line in content.splitlines()]
-    texts = [line for line in lines if line]
+    # CSV parserga uzatish
+    csv_file = io.StringIO(decoded_content)
+    reader = csv.reader(csv_file)
+
+    texts = []
+    for row in reader:
+        if not row:
+            continue
+        # agar matn birinchi ustunda bo'lsa
+        text = row[0].strip()
+        if text:
+            texts.append(text)
 
     if not texts:
-        raise HTTPException(status_code=400, detail="The uploaded file is empty or contains no valid lines")
+        raise HTTPException(status_code=400, detail="CSV file is empty or contains no valid sentences")
 
+    # DB ga yozish
     sentences = [Sentence(text=text, language="uz") for text in texts]
 
     db.add_all(sentences)
@@ -72,7 +112,6 @@ async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(g
     await db.commit()
 
     return sentences
-
 
 @router.put("/{id}", response_model=SentenceOut, dependencies=[Depends(get_current_admin_user)])
 async def update_sentence_by_id(id: int, sentence: SentenceCreate, db: AsyncSession = Depends(get_db)):

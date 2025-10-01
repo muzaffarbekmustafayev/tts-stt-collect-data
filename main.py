@@ -32,21 +32,23 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="TTS-STT data collection api", 
     lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None
 )
-    # docs_url=None,
-    # redoc_url=None,
-    # openapi_url=None
 
 origins = [
-    "http://localhost:5173",
-    "https://70c7c8293365.ngrok-free.app",
-    "https://asror-qobulov.jprq.site",
-    "http://asror-qobulov.jprq.site",
+    "https://tts-stt-collect-data-admin-panel-cyy0et0co.vercel.app",
+    "https://tts-stt-collect-data-admin-panel.vercel.app",
+    "https://tts-stt.uz",
+    # "https://70c7c8293365.ngrok-free.app",
+    # "https://asror-qobulov.jprq.site",
+    # "http://asror-qobulov.jprq.site",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins= ["*"],  # TODO: change to frontend domeni in production
+    allow_origins= origins,#["*"],  # TODO: change to frontend domeni in production
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
@@ -103,4 +105,4 @@ async def run_bot():
 if __name__ == "__main__":
     import uvicorn
     logger.info("Starting uvicorn server")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="debug")
+    uvicorn.run("main:app", host="0.0.0.0", port=8797, log_level="debug")

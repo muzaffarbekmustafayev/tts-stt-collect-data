@@ -78,6 +78,7 @@ async def get_available_sentence(user_id: int, sent_audio_count: int, db: AsyncS
             .scalar_subquery() < settings.sentence_to_audio_limit
         )
         .where(Sentence.id.not_in(user_sentences_subq))
+        .order_by(func.random())
         .limit(1)
     )
 
@@ -104,6 +105,7 @@ async def get_available_sentence(user_id: int, sent_audio_count: int, db: AsyncS
               ReceivedAudio.created_at < timeout_time
           )
       )
+      .order_by(func.random())
       .limit(1)
     )
     result = await db.execute(stmt)
@@ -129,6 +131,7 @@ async def get_available_sentence(user_id: int, sent_audio_count: int, db: AsyncS
               ReceivedAudio.created_at < timeout_time
           )
       )
+      .order_by(func.random())
       .limit(1)
     )
     result = await db.execute(stmt)
