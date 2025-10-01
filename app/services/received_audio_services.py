@@ -206,7 +206,6 @@ async def get_available_receivedAudio(user_id: int, check_audio_count: int, db: 
 
     result = await db.execute(stmt)
     received_audio = result.scalar_one_or_none()
-    print("received_audio", received_audio)
     if received_audio:
       # agar audio topilsa, userga yuborishdan oldin uni checked_audioga qo'shish kerak
       await add_checked_audio(user_id, received_audio.id, db)

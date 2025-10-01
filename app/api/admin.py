@@ -32,7 +32,6 @@ async def get_admin_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=
 # add admin user
 @router.post("/", response_model=AdminUserOut, dependencies=[Depends(get_current_superadmin_user)])
 async def create_admin_user_api(user: AdminUserCreate, db: AsyncSession = Depends(get_db)):
-    print("Creating admin user:", user)
     new_user = await create_admin_user(user, db)
     return new_user
 
