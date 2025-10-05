@@ -44,8 +44,8 @@ async def get_sentence_and_audio(update: Update, context: ContextTypes.DEFAULT_T
         reply_markup = get_cancel_keyboard()
         
         await update.message.reply_text(
-            f"📝 Quyidagi gapni o'qib, ovoz yozib yuboring:\n\n"
-            f"'{sentence.text}'\n\n"
+            f"📝 Quyidagi gapni o'qing va ovozli xabar shaklida yuboring:\n\n"
+            f"'_{sentence.text}_'\n\n"
             f"🎤 Ovoz xabar yuboring yoki {KEYBOARD_NAMES['CANCEL']} tugmasini bosib bekor qiling.",
             reply_markup=reply_markup
         )
@@ -66,7 +66,7 @@ async def handle_audio_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         from bot.utils.keyboards import get_cancel_keyboard
         reply_markup = get_cancel_keyboard()
         await update.message.reply_text(
-            f"❌ Iltimos, ovoz xabar yuboring yoki {KEYBOARD_NAMES['CANCEL']} tugmasini bosing.",
+            f"❌ Iltimos, ovozli xabar yuboring yoki {KEYBOARD_NAMES['CANCEL']} tugmasini bosing.",
             reply_markup=reply_markup
         )
         return AWAITING_AUDIO
@@ -102,7 +102,7 @@ async def handle_audio_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         context.user_data['received_audio_id'] = received_audio.id
         
         await update.message.reply_text(
-            "Ovozli xabarni qabul qilinishi uchun tasdiqlashni bosing!",
+            "Ovozli xabarni qabul qilish uchun tasdiqlashni bosing!",
             reply_markup=get_confirmation_keyboard()
         )
         
@@ -159,13 +159,23 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return ConversationHandler.END
 
 
+async def handle_next_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle next audio"""
+    return NEXT_OR_FINISH
+
+async def handle_finish_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle finish audio"""
+    return ConversationHandler.END
+
+
 AWAITING_AUDIO = 1
 CONFIRMATION = 2
+NEXT_OR_FINISH = 3
 
 def get_audio_handler(app: Application):
     """Get the audio."""
     # Audio upload conversation handler
-    audio_conv_handler =    ConversationHandler(
+    audio_conv_handler = ConversationHandler(
         entry_points=[MessageHandler(filters.Regex(KEYBOARD_NAMES['SEND_AUDIO']), get_sentence_and_audio)],
         states={
             AWAITING_AUDIO: [
@@ -176,6 +186,10 @@ def get_audio_handler(app: Application):
             CONFIRMATION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_audio_confirmation),
                 MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)
+            ],
+            NEXT_OR_FINISH: [
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['NEXT']}$"), handle_next_audio),
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['FINISH']}$"), handle_finish_audio)
             ],
         },
         fallbacks=[MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)],

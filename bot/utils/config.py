@@ -1,6 +1,6 @@
 KEYBOARD_NAMES = {
-  "SEND_AUDIO": "📝 Matnni o'qish",
-  "CHECK_AUDIO": "🎧 Yuborilgan audioni tekshirish",
+  "SEND_AUDIO": "📝 Matnni o'qish va ovoz yuborish",
+  "CHECK_AUDIO": "🎧 Yuborilgan ovozlarni tekshirish",
   "STATISTICS": "📊 Statistika",
   "INFO": "ℹ️ Bot haqida",
   "HELP": "ℹ️ Yordam",
