@@ -11,4 +11,8 @@ KEYBOARD_NAMES = {
   "CORRECT": "✅ To'g'ri",
   "INCORRECT": "❌ Noto'g'ri",
   "CONFIRMATION": "✅ Tasdiqlash",
+  "RETRY_RECORDING": "🔄 Qaytadan yozish",
+  "NEXT": "⏭️ Keyingisi",
+  "FINISH": "Bosh menuga qaytish",
+  "BACK_TO_MENU": "📱 Menyuga qaytish"
 }
