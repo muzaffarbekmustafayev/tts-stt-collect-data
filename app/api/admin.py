@@ -17,6 +17,7 @@ from app.schemas.received_audio import ReceivedAudioOut, ReceivedAudioOutPost, R
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioOut
 from app.services.received_audio_services import get_received_audio_by_id
+from typing import Optional
 
 logger = get_logger("api.admin")
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -51,8 +52,12 @@ async def delete_admin_user_by_id_api(id: int, db: AsyncSession = Depends(get_db
 #  ==================== User API  ===========================
 # get all users
 @router.get("/users", response_model=list[UserOut], dependencies=[Depends(get_current_admin_user)])
-async def get_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).offset((page - 1) * limit).limit(limit))
+async def get_users(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), name: Optional[str] = Query(None), db: AsyncSession = Depends(get_db)):
+    stmt = select(User)
+    if name:
+        stmt = stmt.where(User.name.ilike(f"%{name}%"))
+    stmt = stmt.offset((page - 1) * limit).limit(limit)
+    result = await db.execute(stmt)
     users = result.scalars().all()
     return users
 
@@ -71,8 +76,12 @@ async def delete_user_by_id(id: int, db: AsyncSession = Depends(get_db)):
 # ======================= Sentence API ===========================
 #get sentences
 @router.get("/sentences", response_model=list[SentenceOut], dependencies=[Depends(get_current_admin_user)])
-async def get_sentences(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Sentence).offset((page - 1) * limit).limit(limit))
+async def get_sentences(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), text: Optional[str] = Query(None), db: AsyncSession = Depends(get_db)):
+    stmt = select(Sentence)
+    if text:
+        stmt = stmt.where(Sentence.text.ilike(f"%{text}%"))
+    stmt = stmt.offset((page - 1) * limit).limit(limit)
+    result = await db.execute(stmt)
     sentences = result.scalars().all()
     return sentences
 
