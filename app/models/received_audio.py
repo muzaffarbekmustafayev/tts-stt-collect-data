@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Float
 from datetime import datetime, UTC
 from app.models.base import Base
 from enum import Enum
@@ -15,6 +15,6 @@ class ReceivedAudio(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     sentence_id = Column(Integer, ForeignKey("sentences.id", ondelete="CASCADE"), nullable=False)
     audio_path = Column(String, nullable=True)
-    duration = Column(Integer, nullable=True)
+    duration = Column(Float, nullable=True)
     status = Column(ENUM(AudioStatus, name='audiostatus'), default=AudioStatus.pending)
     created_at = Column(DateTime(timezone=True), default=datetime.now(UTC))

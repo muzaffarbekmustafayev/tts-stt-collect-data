@@ -130,7 +130,7 @@ def get_payload(token: str):
     return payload
 
 async def get_all_audios(page: int, limit: int, db: AsyncSession):
-    stmt = text(f"SELECT received_audio.*, sentences.text AS sentence FROM received_audio JOIN sentences ON received_audio.sentence_id = sentences.id ORDER BY received_audio.created_at DESC OFFSET {(page - 1) * limit} LIMIT {limit}")
+    stmt = text(f"SELECT received_audio.*, sentences.text AS sentence, users.name AS user_name FROM received_audio JOIN sentences ON received_audio.sentence_id = sentences.id JOIN users ON received_audio.user_id = users.id ORDER BY received_audio.created_at DESC OFFSET {(page - 1) * limit} LIMIT {limit}")
     result = await db.execute(stmt)
     audios = result.all()
     return audios
