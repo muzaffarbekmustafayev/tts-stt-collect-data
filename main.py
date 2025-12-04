@@ -41,8 +41,8 @@ origins = [
     "https://tts-stt-collect-data-admin-panel-cyy0et0co.vercel.app",
     "https://tts-stt-collect-data-admin-panel.vercel.app",
     "https://tts-stt.uz",
-    # "https://70c7c8293365.ngrok-free.app",
-    # "https://asror-qobulov.jprq.site",
+    # "https://inspirational-bluffable-many.ngrok-free.dev",
+    "http://localhost:5173",
     # "http://asror-qobulov.jprq.site",
 ]
 

@@ -1,5 +1,6 @@
 import csv
 import io
+from charset_normalizer import from_bytes
 from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -83,12 +84,14 @@ async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(g
         raise HTTPException(status_code=400, detail="Only CSV files are supported")
 
     raw_bytes = await file.read()
-    try:
-        decoded_content = raw_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        decoded_content = raw_bytes.decode("utf-8", errors="ignore")
 
-    # CSV parserga uzatish
+    # 🔹 Avtomatik encoding aniqlash
+    result = from_bytes(raw_bytes).best()
+    if not result:
+        raise HTTPException(status_code=400, detail="Encoding detection failed")
+
+    decoded_content = str(result)  # bu yerda to‘g‘ri dekodlangan matn
+
     csv_file = io.StringIO(decoded_content)
     reader = csv.reader(csv_file)
 
@@ -96,8 +99,8 @@ async def create_sentence_by_file(file: UploadFile, db: AsyncSession = Depends(g
     for row in reader:
         if not row:
             continue
-        # agar matn birinchi ustunda bo'lsa
-        text = row[0].strip()
+        # qatordagi ustunlarni qayta birlashtirish
+        text = ", ".join(col.strip() for col in row)
         if text:
             texts.append(text)
 

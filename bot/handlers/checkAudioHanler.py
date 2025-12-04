@@ -1,9 +1,10 @@
 from telegram import Update
 from telegram.ext import Application, ContextTypes, ConversationHandler, MessageHandler, filters
 from app.core.logging import get_logger
-
+from app.services.user_service import get_user_statistic
 from app.db.session import AsyncSessionLocal
-from bot.utils.keyboards import get_main_menu_keyboard, get_verification_keyboard
+
+from bot.utils.keyboards import get_main_menu_keyboard, get_verification_keyboard, get_next_or_finish_keyboard
 from bot.utils.config import KEYBOARD_NAMES
 from bot.services.user_services import get_user_by_telegramId
 from app.services.checked_audio_services import checked_audio_and_update
@@ -16,6 +17,7 @@ logger = get_logger("handlers")
 
 # Conversation states
 AWAITING_VERIFICATION = 1
+NEXT_OR_FINISH = 2
 
 async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Get audio for checking"""
@@ -45,10 +47,10 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
         
         await update.message.reply_text(
             f"🎧 Quyidagi ovozni tinglab, sifatini baholang:\n\n"
-            f"📝 Matn: '{sentence.text}'\n\n"
-            f"🎤 Ovoz fayli yuklanmoqda...\n\n"
-            f"Ovozni tinglaganingizdan so'ng, quyidagi tugmalardan birini bosing:",
-            reply_markup=get_verification_keyboard()
+            f"📝 Matn: '<b><i>{sentence.text}</i></b>'\n\n"
+            f"🎤 Ovoz fayli yuklanmoqda...\n\n",
+            reply_markup=get_verification_keyboard(),
+            parse_mode="HTML"
         )
         
         # Send audio file
@@ -61,7 +63,8 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
                         audio=audio_file,
                         title=f"Audio {received_audio.id}",
                         performer="User",
-                        caption=f"Matn: {sentence.text}"
+                        caption=f"📝Matn: '<b><i>{sentence.text}</i></b>'",
+                        parse_mode="HTML"
                     )
             except Exception as e:
                 logger.error(f"Audio file send error: {e}")
@@ -106,13 +109,11 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
             await checked_audio_and_update(user_id, received_audio.id, is_correct, db)
         
         await update.message.reply_text(
-            f"Baholaganingiz uchun rahmat! 👌 Boshqa ovozlarni ham tekshirib ko'ring.",
-            reply_markup=get_main_menu_keyboard()
+            f"Baholaganingiz uchun rahmat! 👌",
+            reply_markup=get_next_or_finish_keyboard()
         )
         
-        # Clear user data
-        context.user_data.clear()
-        return ConversationHandler.END
+        return NEXT_OR_FINISH
         
     except BotServiceError as e:
         await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
@@ -135,6 +136,18 @@ async def cancel_checking(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     return ConversationHandler.END
 
+async def handle_finish_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle finish audio"""
+    context.user_data.clear()
+    user_telegram_id = str(update.effective_user.id)
+    async with AsyncSessionLocal() as db:
+        [_, _, checked_audio_count] = await get_user_statistic(user_telegram_id, db)
+    await update.message.reply_text(
+        f"Yakunlandi! Siz tekshirgan ovozlar soni {checked_audio_count} ta. Yana ovoz tekshirish uchun '{KEYBOARD_NAMES['CHECK_AUDIO']}' ni bosing.",
+        reply_markup=get_main_menu_keyboard()
+    )
+    return ConversationHandler.END
+
 
 def check_audio_handler(app: Application):
     """Register audio checking handler"""
@@ -145,6 +158,10 @@ def check_audio_handler(app: Application):
         states={
             AWAITING_VERIFICATION: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_verification)
+            ],
+            NEXT_OR_FINISH: [
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['NEXT']}$"), get_audio_for_checking),
+                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['FINISH']}$"), handle_finish_audio)
             ],
         },
         fallbacks=[MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel_checking)],
