@@ -107,8 +107,8 @@ async def get_audio_by_user_id_and_sentence_id(user_id: int, sentence_id: int, d
       raise HTTPException(status_code=400, detail="This audio is already approved")
     return received_audio
 
-# file yuklangandan keyin update qilish (audio_path va status update qilish)
-async def update_received_audio_path_status(received_audio_id: int, file_path: str, db: AsyncSession) -> ReceivedAudio | None:
+# file yuklangandan keyin update qilish (audio_path, duration va status update qilish)
+async def update_received_audio_path_status(received_audio_id: int, file_path: str, db: AsyncSession, duration: float = None) -> ReceivedAudio | None:
     stmt = (
         select(ReceivedAudio)
         .where(ReceivedAudio.id == received_audio_id)
@@ -119,6 +119,8 @@ async def update_received_audio_path_status(received_audio_id: int, file_path: s
       raise HTTPException(status_code=404, detail="Audio not found")
     received_audio.audio_path = file_path
     received_audio.status = AudioStatus.approved
+    if duration is not None:
+        received_audio.duration = duration
     await db.commit()
     await db.refresh(received_audio)
     return received_audio

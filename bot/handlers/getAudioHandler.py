@@ -197,9 +197,9 @@ async def handle_finish_audio(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data.clear()
     user_telegram_id = str(update.effective_user.id)
     async with AsyncSessionLocal() as db:
-        [_, sent_audio_count, sent_audio_duration, _, _] = await get_user_statistic(user_telegram_id, db)
+        [_, sent_audio_count, _, _, _] = await get_user_statistic(user_telegram_id, db)
     await update.message.reply_text(
-        f"Yakunlandi! Siz yuborgan ovozlar soni {sent_audio_count} ta / {sent_audio_duration//3600} soat {sent_audio_duration%3600//60} daqiqa {sent_audio_duration%60} sekund. Yana ovoz yuborish uchun '{KEYBOARD_NAMES['SEND_AUDIO']}' ni bosing.",
+        f"Yakunlandi! Siz yuborgan ovozlar soni {sent_audio_count} ta. Yana ovoz yuborish uchun '{KEYBOARD_NAMES['SEND_AUDIO']}' ni bosing.",
         reply_markup=get_main_menu_keyboard()
     )
     return ConversationHandler.END

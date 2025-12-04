@@ -106,7 +106,7 @@ async def update_user(id: int, user_data: UserCreate, db: AsyncSession) -> User:
     return db_user
 
 
-async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[datetime, int, int, int, int]:
+async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[datetime, int, float, int, float]:
     
     sent_count_subq = (
         select(func.count(ReceivedAudio.id))
