@@ -106,17 +106,35 @@ async def update_user(id: int, user_data: UserCreate, db: AsyncSession) -> User:
     return db_user
 
 
-async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[datetime, int, int]:
+async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[datetime, int, int, int, int]:
     
     sent_count_subq = (
         select(func.count(ReceivedAudio.id))
         .where(ReceivedAudio.user_id == User.id)
+        .where(ReceivedAudio.status == AudioStatus.approved)
         .correlate(User)
         .scalar_subquery()
     )
 
     checked_count_subq = (
         select(func.count(CheckedAudio.id))
+        .where(CheckedAudio.checked_by == User.id)
+        .where(CheckedAudio.status == AudioStatus.approved)
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    sent_duration_subq = (
+        select(func.sum(ReceivedAudio.duration))
+        .where(ReceivedAudio.user_id == User.id)
+        .correlate(User)
+        .scalar_subquery()
+    )
+
+    checked_duration_subq = (
+        select(func.sum(ReceivedAudio.duration))
+        .select_from(CheckedAudio)
+        .join(ReceivedAudio, CheckedAudio.audio_id == ReceivedAudio.id)
         .where(CheckedAudio.checked_by == User.id)
         .correlate(User)
         .scalar_subquery()
@@ -126,6 +144,8 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
         select(
             sent_count_subq.label("sent_audio_count"),
             checked_count_subq.label("checked_audio_count"),
+            sent_duration_subq.label("sent_audio_duration"),
+            checked_duration_subq.label("checked_audio_duration"),
             User.created_at
         )
         .where(User.telegram_id == user_telegram_id)
@@ -138,10 +158,10 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
         logger.warning(f"User not found with telegram_id: {user_telegram_id}")
         raise HTTPException(status_code=404, detail="User not found")
 
-    sent_audio_count, checked_audio_count, created_at = row
+    sent_audio_count, checked_audio_count, sent_audio_duration, checked_audio_duration, created_at = row
     regisTime = datetime.now(timezone.utc) - created_at
 
-    return regisTime, sent_audio_count, checked_audio_count
+    return regisTime, sent_audio_count, sent_audio_duration or 0, checked_audio_count, checked_audio_duration or 0
 
 
 async def delete_user(id: int, db: AsyncSession) -> User:

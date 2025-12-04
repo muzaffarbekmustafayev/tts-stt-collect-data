@@ -81,9 +81,11 @@ async def handle_audio_upload(update: Update, context: ContextTypes.DEFAULT_TYPE
         if update.message.voice:
             audio_file = await update.message.voice.get_file()
             file_extension = "ogg"
+            context.user_data['duration'] = update.message.voice.duration
         else:
             audio_file = await update.message.audio.get_file()
             file_extension = os.path.splitext(update.message.audio.file_path)[1].lower()
+            context.user_data['duration'] = update.message.audio.duration
 
         user_id = context.user_data['user_id']
         sentence_id = context.user_data['current_sentence'].id
@@ -169,8 +171,9 @@ async def handle_audio_confirmation(update: Update, context: ContextTypes.DEFAUL
     else:
         relative_path = context.user_data['relative_path']
         received_audio_id = context.user_data['received_audio_id']
+        duration = context.user_data['duration'] or 0
         async with AsyncSessionLocal() as db:
-            await update_received_audio_path_status(received_audio_id=received_audio_id, file_path=relative_path, db=db)
+            await update_received_audio_path_status(received_audio_id=received_audio_id, file_path=relative_path, duration=duration, db=db)
         
         await update.message.reply_text(
             "✅ Ovoz muvaffaqiyatli saqlandi!",
@@ -194,9 +197,9 @@ async def handle_finish_audio(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data.clear()
     user_telegram_id = str(update.effective_user.id)
     async with AsyncSessionLocal() as db:
-        [_, sent_audio_count, _] = await get_user_statistic(user_telegram_id, db)
+        [_, sent_audio_count, sent_audio_duration, _, _] = await get_user_statistic(user_telegram_id, db)
     await update.message.reply_text(
-        f"Yakunlandi! Siz yuborgan ovozlar soni {sent_audio_count} ta. Yana ovoz yuborish uchun '{KEYBOARD_NAMES['SEND_AUDIO']}' ni bosing.",
+        f"Yakunlandi! Siz yuborgan ovozlar soni {sent_audio_count} ta / {sent_audio_duration//3600} soat {sent_audio_duration%3600//60} daqiqa {sent_audio_duration%60} sekund. Yana ovoz yuborish uchun '{KEYBOARD_NAMES['SEND_AUDIO']}' ni bosing.",
         reply_markup=get_main_menu_keyboard()
     )
     return ConversationHandler.END
