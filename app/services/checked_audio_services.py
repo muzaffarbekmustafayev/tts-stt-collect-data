@@ -124,3 +124,39 @@ async def get_checked_audio_by_id(checked_audio_id: int, db: AsyncSession) -> Ch
     if not checked_audio:
       raise HTTPException(status_code=404, detail="Checked audio not found")
     return checked_audio
+
+
+
+
+#========================== second check services ========================
+# 
+async def get_audio_for_second_check_service(user_id: int, db: AsyncSession) -> CheckedAudio | None:
+    """search not second checked audio"""
+    stmt = select(CheckedAudio).where(CheckedAudio.status == AudioStatus.approved).where(CheckedAudio.second_checker_id == None).order_by(CheckedAudio.checked_at.desc())
+    result = await db.execute(stmt)
+    checked_audio = result.scalar_one_or_none()
+    if not checked_audio:
+      stmt = select(CheckedAudio).where(CheckedAudio.status == AudioStatus.approved).where(CheckedAudio.second_checker_id == user_id).where(CheckedAudio.second_check_result == None).order_by(CheckedAudio.checked_at.desc())
+      result = await db.execute(stmt)
+      checked_audio = result.scalar_one_or_none()
+      if not checked_audio:
+        raise HTTPException(status_code=404, detail="Audio not found")
+    else:
+      """assign second checker id"""
+      checked_audio.second_checker_id = user_id
+      await db.commit()
+      await db.refresh(checked_audio)
+    return checked_audio
+
+async def update_second_checked_audio_result(checked_audio_id: int, second_check_result: bool, user_id: int, db: AsyncSession) -> CheckedAudio | None:
+    """update second checked audio result"""
+    stmt = select(CheckedAudio).where(CheckedAudio.id == checked_audio_id).where(CheckedAudio.second_checker_id == user_id)
+    result = await db.execute(stmt)
+    checked_audio = result.scalar_one_or_none()
+    if checked_audio:
+      checked_audio.second_check_result = second_check_result
+      checked_audio.second_checked_at = datetime.now(timezone.utc)
+      await db.commit()
+      await db.refresh(checked_audio)
+      return checked_audio
+    raise HTTPException(status_code=404, detail="Checked audio not found")

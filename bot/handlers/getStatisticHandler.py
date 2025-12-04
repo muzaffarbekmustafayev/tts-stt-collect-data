@@ -14,12 +14,16 @@ async def get_bot_statisticHandler(update: Update, context: ContextTypes.DEFAULT
         user_telegram_id = str(update.effective_user.id)  # Convert to string
         async with AsyncSessionLocal() as db:
             regisTime, sentAudioCount, sentAudioDuration, checkedAudioCount, checkedAudioDuration = await get_user_statistic(user_telegram_id, db)
+        
+        # Float qiymatlarni int ga aylantirish
+        sentAudioDuration = int(sentAudioDuration)
+        checkedAudioDuration = int(checkedAudioDuration)
             
         await update.message.reply_text(f"📊 Statistika:\n\n"
             f"👤 Foydalanuvchi telegram idsi: {user_telegram_id}\n"
             f"⏰ Registratsiya vaqtidan beri: {regisTime.days} kun {regisTime.seconds//3600} soat {(regisTime.seconds%3600)//60} daqiqa {regisTime.seconds%60} sekund o'tdi.\n\n"
-            f"🎤 Yuborilgan ovozlar soni: {sentAudioCount} ta / {sentAudioDuration//3600} soat {sentAudioDuration%3600//60} daqiqa {sentAudioDuration%60} sekund\n"
-            f"🎧 Tekshirilgan ovozlar soni: {checkedAudioCount} ta / {checkedAudioDuration//3600} soat {checkedAudioDuration%3600//60} daqiqa {checkedAudioDuration%60} sekund\n",
+            f"🎤 Yuborilgan ovozlar soni: {sentAudioCount} ta / {sentAudioDuration//3600} soat {(sentAudioDuration%3600)//60} daqiqa {sentAudioDuration%60} sekund\n"
+            f"🎧 Tekshirilgan ovozlar soni: {checkedAudioCount} ta / {checkedAudioDuration//3600} soat {(checkedAudioDuration%3600)//60} daqiqa {checkedAudioDuration%60} sekund\n",
             reply_markup=get_main_menu_keyboard()
         )
     except HTTPException as e:
@@ -27,4 +31,3 @@ async def get_bot_statisticHandler(update: Update, context: ContextTypes.DEFAULT
     except Exception as e:
         logger.error(f"Statistics error: {e}")
         await update.message.reply_text("❌ Statistika olishda xatolik yuz berdi.")
-

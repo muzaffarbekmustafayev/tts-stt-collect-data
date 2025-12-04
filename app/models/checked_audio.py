@@ -13,4 +13,7 @@ class CheckedAudio(Base):
     comment = Column(Text, nullable=True)
     is_correct = Column(Boolean, nullable=True)
     status = Column(ENUM(AudioStatus, name='audiostatus'), default=AudioStatus.pending)
+    second_checker_id = Column(Integer, ForeignKey("admin_users.id", ondelete="SET NULL"), nullable=True)
+    second_check_result = Column(Boolean, nullable=True)
     checked_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
+    second_checked_at = Column(DateTime(timezone=True), nullable=True)

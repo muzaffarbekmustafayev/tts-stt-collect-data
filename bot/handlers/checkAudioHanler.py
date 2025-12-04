@@ -58,14 +58,29 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
             try:
                 # Audio faylni yuklash va yuborish
                 audio_path = f"media/{received_audio.audio_path}"  # Fix: use audio_path
-                with open(audio_path, 'rb') as audio_file:
-                    await update.message.reply_audio(
-                        audio=audio_file,
-                        title=f"Audio {received_audio.id}",
-                        performer="User",
-                        caption=f"📝Matn: '<b><i>{sentence.text}</i></b>'",
-                        parse_mode="HTML"
-                    )
+                caption_text = f"📝Matn: '<b><i>{sentence.text}</i></b>'"
+                
+                try:
+                    # Avval voice sifatida yuborishga harakat qilamiz
+                    with open(audio_path, 'rb') as audio_file:
+                        await update.message.reply_voice(
+                            voice=audio_file,
+                            caption=caption_text,
+                            parse_mode="HTML"
+                        )
+                except Exception as voice_error:
+                    error_str = str(voice_error)
+                    # Agar Voice_messages_forbidden bo'lsa, document sifatida yuboramiz
+                    if "Voice_messages_forbidden" in error_str or "Forbidden" in error_str:
+                        logger.warning(f"Voice message forbidden, sending as document: {voice_error}")
+                        with open(audio_path, 'rb') as audio_file:
+                            await update.message.reply_document(
+                                document=audio_file,
+                                caption=caption_text + "\n\n⚠️ Sizning privacy sozlamalaringiz tufayli audio fayl document sifatida yuborildi.",
+                                parse_mode="HTML"
+                            )
+                    else:
+                        raise voice_error
             except Exception as e:
                 logger.error(f"Audio file send error: {e}")
                 await update.message.reply_text(

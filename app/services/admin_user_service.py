@@ -97,11 +97,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
         raise credentials_exception
     
     user = await get_admin_user_by_username(username, db)
-    return {"username": user.username, "role": user.role, "is_active": user.is_active}
+    return {"id": user.id, "username": user.username, "role": user.role, "is_active": user.is_active}
 
 
 def get_current_admin_user (current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     if current_user["role"].lower() != "admin" and current_user["role"].lower() != "superadmin" and current_user["is_active"] == False:
+        raise HTTPException(status_code=403, detail="You don't have permission to access this resource")
+    return current_user
+
+def get_current_checker_user (current_user: dict = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if current_user["role"].lower() not in ["checker", "admin", "superadmin"] and current_user["is_active"] == False:
         raise HTTPException(status_code=403, detail="You don't have permission to access this resource")
     return current_user
 
@@ -135,6 +140,11 @@ async def get_all_audios(page: int, limit: int, db: AsyncSession):
     audios = result.all()
     return audios
 
+async def get_all_checked_audios(page: int, limit: int, db: AsyncSession):
+    stmt = text(f"SELECT checked_audio.*, users.name AS checked_by_name FROM checked_audio JOIN users ON checked_audio.checked_by = users.id ORDER BY checked_audio.checked_at DESC OFFSET {(page - 1) * limit} LIMIT {limit}")
+    result = await db.execute(stmt)
+    checked_audios = result.all()
+    return checked_audios
 
 async def delete_admin_user(id: int, db: AsyncSession) -> AdminUser:
     admin_user = await get_admin_user_by_id(id, db)

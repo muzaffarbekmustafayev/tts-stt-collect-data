@@ -6,13 +6,13 @@ from sqlalchemy import select, func, text
 from app.core.logging import get_logger
 from app.models.admin_users import AdminUser
 from app.schemas.admin_users import AdminUserCreate, AdminUserOut, AdminUserUpdate
-from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id, get_all_audios, delete_admin_user
+from app.services.admin_user_service import create_admin_user, update_admin_user, get_current_admin_user, get_current_superadmin_user, get_admin_user_by_id, get_all_audios, delete_admin_user, get_all_checked_audios
 from app.services.user_service import update_user, delete_user
 from app.models.user import User
 from app.schemas.user import UserOut, UserCreate
 from app.models.sentence import Sentence
 from app.schemas.sentence import SentenceOut
-from app.models.received_audio import ReceivedAudio
+from app.models.received_audio import AudioStatus, ReceivedAudio
 from app.schemas.received_audio import ReceivedAudioOut, ReceivedAudioOutPost, ReceivedAudioCreate, ReceivedAudioOutPut
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioOut
@@ -107,9 +107,7 @@ async def update_received_audio_by_id(id: int, received_audio: ReceivedAudioOutP
 #get checked audios
 @router.get("/checked-audios", response_model=list[CheckedAudioOut], dependencies=[Depends(get_current_admin_user)])
 async def get_checked_audios(page: int = Query(1, ge=1), limit: int = Query(10, ge=1), db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(CheckedAudio).offset((page - 1) * limit).limit(limit))
-    checked_audios = result.scalars().all()
-    return checked_audios
+    return await get_all_checked_audios(page, limit, db)
 
 # ======================= Statistics API ===========================
 @router.get("/statistics", response_model=dict, dependencies=[Depends(get_current_admin_user)])
@@ -129,12 +127,15 @@ async def get_admin_statistics(db: AsyncSession = Depends(get_db), current_user:
     """)
     result = await db.execute(stmt)
     row_data = result.first()
+    total_audio_duration = await db.execute(select(func.sum(ReceivedAudio.duration)).where(ReceivedAudio.status == AudioStatus.approved))
+    total_audio_duration = total_audio_duration.scalar()
     statistics = {
         "users": row_data.users or 0,
         "sentences": row_data.sentences or 0,
         "audios": row_data.audios or 0,
         "checked_audios": row_data.checked_audios or 0,
-        "admins": row_data.admins or 0
+        "admins": row_data.admins or 0,
+        "total_audio_duration": int(total_audio_duration)/60 if total_audio_duration else 0
     }
     users_result = await db.execute(select(User).limit(20))
     users = users_result.scalars().all()
