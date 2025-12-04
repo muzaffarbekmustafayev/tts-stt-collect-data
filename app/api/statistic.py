@@ -21,9 +21,9 @@ async def get_statistic(db: AsyncSession = Depends(get_db)):
     users = users.scalar()
     sentences = await db.execute(select(func.count(Sentence.id)))
     sentences = sentences.scalar()
-    audios = await db.execute(select(func.count(ReceivedAudio.id).where(ReceivedAudio.status == AudioStatus.approved)))
+    audios = await db.execute(select(func.count(ReceivedAudio.id)).where(ReceivedAudio.status == AudioStatus.approved))
     audios = audios.scalar()
-    checked_audios = await db.execute(select(func.count(CheckedAudio.id).where(CheckedAudio.status == AudioStatus.approved)))
+    checked_audios = await db.execute(select(func.count(CheckedAudio.id)).where(CheckedAudio.status == AudioStatus.approved))
     checked_audios = checked_audios.scalar()
     return {
         "users": users,
@@ -120,20 +120,20 @@ async def get_statistic_by_users(
     
     users_statistics = []
     for row in rows:
-        user_id, name, telegram_id, sent_count, sent_duration_sec, checked_count, checked_duration_sec, pending_audio_count, pending_checked_audio_count = row
+        user_id, name, telegram_id, sent_count, sent_duration_sec, pending_audio_count, checked_count, checked_duration_sec, pending_checked_audio_count = row
         
-        # Sekundlarni soatga aylantirish (3600 sekund = 1 soat)
-        sent_duration_hours = (sent_duration_sec or 0) / 3600
-        checked_duration_hours = (checked_duration_sec or 0) / 3600
+        # Sekundlarni minutga aylantirish (60 sekund = 1 minut)
+        sent_duration_hours = (sent_duration_sec or 0) / 60
+        checked_duration_hours = (checked_duration_sec or 0) / 60
         
         users_statistics.append({
             "user_id": user_id,
             "name": name,
             "telegram_id": telegram_id,
             "sent_audio_count": sent_count or 0,
-            "sent_audio_hours": round(sent_duration_hours, 2),
+            "sent_audio_minutes": round(sent_duration_hours, 2),
             "checked_audio_count": checked_count or 0,
-            "checked_audio_hours": round(checked_duration_hours, 2),
+            "checked_audio_minutes": round(checked_duration_hours, 2),
             "pending_audio_count": pending_audio_count or 0,
             "pending_checked_audio_count": pending_checked_audio_count or 0
         })

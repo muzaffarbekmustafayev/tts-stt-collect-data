@@ -12,9 +12,10 @@ class ReceivedAudioCreate(BaseModel):
 class ReceivedAudioOut(BaseModel):
     id: int
     user_id: int
+    user_name: Optional[str] = None
     sentence_id: int
     audio_path: Optional[str] = None
-    duration: Optional[int] = None
+    duration: Optional[float] = None
     sentence: str
     status: AudioStatus
     created_at: datetime
@@ -28,7 +29,7 @@ class ReceivedAudioOutPost(BaseModel):
     user_id: int
     sentence_id: int
     audio_path: Optional[str] = None
-    duration: Optional[int] = None
+    duration: Optional[float] = None
     status: AudioStatus
     created_at: datetime
 
