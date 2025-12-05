@@ -25,16 +25,21 @@ async def get_statistic(db: AsyncSession = Depends(get_db)):
     audios = audios.scalar()
     checked_audios = await db.execute(select(func.count(CheckedAudio.id)).where(CheckedAudio.status == AudioStatus.approved))
     checked_audios = checked_audios.scalar()
+    total_audio_duration = await db.execute(select(func.sum(ReceivedAudio.duration)).where(ReceivedAudio.status == AudioStatus.approved))
+    total_audio_duration = total_audio_duration.scalar()
     return {
         "users": users,
         "sentences": sentences,
         "audios": audios,
-        "checked_audios": checked_audios
+        "checked_audios": checked_audios,
+        "total_audio_duration": int(total_audio_duration)/60 if total_audio_duration else 0
     }
 
 
-@router.get("/by-users/", response_model=dict)
+@router.get("/by-users/", response_model=list[dict])
 async def get_statistic_by_users(
+    page: int = Query(1, ge=1),
+    limit: int = Query(10, ge=1),
     name: Optional[str] = Query(None, description="User name bo'yicha qidirish"),
     db: AsyncSession = Depends(get_db)
 ):
@@ -113,7 +118,7 @@ async def get_statistic_by_users(
     if name:
         stmt = stmt.where(User.name.ilike(f"%{name}%"))
     
-    stmt = stmt.order_by(User.id)
+    stmt = stmt.order_by(User.id).offset((page - 1) * limit).limit(limit)
     
     result = await db.execute(stmt)
     rows = result.all()
@@ -138,10 +143,7 @@ async def get_statistic_by_users(
             "pending_checked_audio_count": pending_checked_audio_count or 0
         })
     
-    return {
-        "users": users_statistics,
-        "total_users": len(users_statistics)
-    }
+    return users_statistics
 
 
 @router.get("/by-users/audios/", response_model=dict)
