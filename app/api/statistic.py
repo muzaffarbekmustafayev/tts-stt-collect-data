@@ -100,6 +100,7 @@ async def get_statistic_by_users(
             User.id,
             User.name,
             User.telegram_id,
+            User.info,
             func.coalesce(sent_count_subq.c.sent_count, 0).label("sent_audio_count"),
             func.coalesce(sent_count_subq.c.sent_duration_seconds, 0).label("sent_duration_seconds"),
             func.coalesce(pending_audio_count_subq.c.pending_count, 0).label("pending_audio_count"),
@@ -125,7 +126,7 @@ async def get_statistic_by_users(
     
     users_statistics = []
     for row in rows:
-        user_id, name, telegram_id, sent_count, sent_duration_sec, pending_audio_count, checked_count, checked_duration_sec, pending_checked_audio_count = row
+        user_id, name, telegram_id, info, sent_count, sent_duration_sec, pending_audio_count, checked_count, checked_duration_sec, pending_checked_audio_count = row
         
         # Sekundlarni minutga aylantirish (60 sekund = 1 minut)
         sent_duration_hours = (sent_duration_sec or 0) / 60
@@ -135,6 +136,7 @@ async def get_statistic_by_users(
             "user_id": user_id,
             "name": name,
             "telegram_id": telegram_id,
+            "info": info,
             "sent_audio_count": sent_count or 0,
             "sent_audio_minutes": round(sent_duration_hours, 2),
             "checked_audio_count": checked_count or 0,

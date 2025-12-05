@@ -34,8 +34,14 @@ def upgrade() -> None:
         END $$;
     """)
     
+    # Drop the default value first (required when changing column type)
+    op.execute("ALTER TABLE admin_users ALTER COLUMN role DROP DEFAULT")
+    
     # Alter the existing role column from String to Enum
     op.execute("ALTER TABLE admin_users ALTER COLUMN role TYPE adminrole USING role::adminrole")
+    
+    # Set the default value again with the enum type
+    op.execute("ALTER TABLE admin_users ALTER COLUMN role SET DEFAULT 'admin'::adminrole")
 
 
 def downgrade() -> None:
@@ -45,5 +51,11 @@ def downgrade() -> None:
     op.drop_column('checked_audio', 'second_check_result')
     op.drop_column('checked_audio', 'second_checker_id')
     
+    # Drop the default value first
+    op.execute("ALTER TABLE admin_users ALTER COLUMN role DROP DEFAULT")
+    
     # Revert role column back to String
-    op.alter_column('admin_users', 'role', type_=sa.String(), postgresql_using='role::text')
+    op.execute("ALTER TABLE admin_users ALTER COLUMN role TYPE VARCHAR USING role::text")
+    
+    # Set the default value again as String
+    op.execute("ALTER TABLE admin_users ALTER COLUMN role SET DEFAULT 'admin'")
