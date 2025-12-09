@@ -10,6 +10,7 @@ from bot.handlers.registration import register_handlers
 from bot.handlers.get_information import get_bot_info
 from bot.handlers.notUnderstand import not_understood
 from bot.handlers.getStatisticHandler import get_bot_statisticHandler
+from bot.handlers.changeProfileHandler import change_profile_handler
 from bot.handlers.get_help import get_bot_help
 from bot.handlers.getAudioHandler import get_audio_handler
 from bot.handlers.checkAudioHanler import check_audio_handler
@@ -27,6 +28,7 @@ def create_bot_application():
     register_handlers(application)
     get_audio_handler(application)
     check_audio_handler(application)
+    change_profile_handler(application)
     
     # Add command handlers
     application.add_handler(CommandHandler("info", get_bot_info))
