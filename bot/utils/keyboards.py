@@ -72,7 +72,7 @@ def get_next_or_finish_keyboard():
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
 
 def select_btn_to_change_data():
-    """Get next or finish keyboard"""
+    """Get change profile data keyboard"""
     keyboard = [
         [
             KeyboardButton(KEYBOARD_NAMES["CHANGE_NAME"]),

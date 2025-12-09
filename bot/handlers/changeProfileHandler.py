@@ -143,7 +143,6 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 SELECT_DATA_TO_CHANGE = 1
 CHANGE_DATA = 2
-CONFIRM_CHANGE = 3
 
 def change_profile_handler(app: Application):
     """change profile handler"""
@@ -160,12 +159,7 @@ def change_profile_handler(app: Application):
             CHANGE_DATA: [
                 MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), back_to_menu),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_data_change),
-            ],
-            CONFIRM_CHANGE: [
-                # MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['NEXT']}$"), get_sentence_and_audio),
-                # MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['FINISH']}$"), handle_finish_audio)
-                MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)
-            ],
+            ]
         },
         fallbacks=[MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['CANCEL']}$"), cancel)],
         allow_reentry=True
