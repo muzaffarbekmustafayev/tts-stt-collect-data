@@ -6,7 +6,8 @@ def get_main_menu_keyboard():
     keyboard = [
         [KeyboardButton(KEYBOARD_NAMES["SEND_AUDIO"])],
         [KeyboardButton(KEYBOARD_NAMES["CHECK_AUDIO"])],
-        [KeyboardButton(KEYBOARD_NAMES["STATISTICS"]), KeyboardButton(KEYBOARD_NAMES["INFO"])]
+        [KeyboardButton(KEYBOARD_NAMES["STATISTICS"]), KeyboardButton(KEYBOARD_NAMES["INFO"])],
+        [KeyboardButton(KEYBOARD_NAMES["CHANGE_INFO"])]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -67,5 +68,20 @@ def get_next_or_finish_keyboard():
             KeyboardButton(KEYBOARD_NAMES["FINISH"]),
             KeyboardButton(KEYBOARD_NAMES["NEXT"])
         ]
+    ]
+    return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)
+
+def select_btn_to_change_data():
+    """Get next or finish keyboard"""
+    keyboard = [
+        [
+            KeyboardButton(KEYBOARD_NAMES["CHANGE_NAME"]),
+            KeyboardButton(KEYBOARD_NAMES["CHANGE_AGE"])
+        ],
+        [
+            KeyboardButton(KEYBOARD_NAMES["CHANGE_GENDER"]),
+            KeyboardButton(KEYBOARD_NAMES["CHANGE_INFO_TEXT"])
+        ],
+        [KeyboardButton(KEYBOARD_NAMES["FINISH"])]
     ]
     return ReplyKeyboardMarkup(keyboard, resize_keyboard=True, one_time_keyboard=True)

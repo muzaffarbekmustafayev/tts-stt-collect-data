@@ -3,7 +3,7 @@ import sys
 from typing import Any
 import logging
 
-def setup_logging() -> None:
+def setup_logging() -> logging.Logger:
     """Setup logging configuration for the application"""
     
     # Create logger

@@ -14,5 +14,10 @@ KEYBOARD_NAMES = {
   "RETRY_RECORDING": "🔄 Qaytadan yozish",
   "NEXT": "⏭️ Keyingisi",
   "FINISH": "Bosh menuga qaytish",
-  "BACK_TO_MENU": "📱 Menyuga qaytish"
+  "BACK_TO_MENU": "📱 Menyuga qaytish",
+  "CHANGE_INFO": "✍️ Profil ma'lumotlarini o'zgartirish",
+  "CHANGE_INFO_TEXT": "Qo'shimcha ma'lumotni o'zgartirish",
+  "CHANGE_NAME": "Ismni qayta kiritish",
+  "CHANGE_AGE": "Yoshni qayta kiritish",
+  "CHANGE_GENDER": "Jinsni qayta kiritish",
 }
