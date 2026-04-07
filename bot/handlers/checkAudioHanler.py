@@ -2,14 +2,14 @@ from telegram import Update
 from telegram.ext import Application, ContextTypes, ConversationHandler, MessageHandler, filters
 from app.core.logging import get_logger
 from app.services.user_service import get_user_statistic
-from app.db.session import AsyncSessionLocal
+from beanie import PydanticObjectId
 
 from bot.utils.keyboards import get_main_menu_keyboard, get_verification_keyboard, get_next_or_finish_keyboard
 from bot.utils.config import KEYBOARD_NAMES
 from bot.services.user_services import get_user_by_telegramId
-from app.services.checked_audio_services import checked_audio_and_update
 from app.services.bot_services import (
     bot_get_audio_for_checking,
+    bot_create_checked_audio,
     BotServiceError
 )
 
@@ -25,74 +25,66 @@ async def get_audio_for_checking(update: Update, context: ContextTypes.DEFAULT_T
     
     try:
         # Get user info using bot service
-        async with AsyncSessionLocal() as db:
-            user = await get_user_by_telegramId(user_telegram_id, db)
+        user = await get_user_by_telegramId(user_telegram_id)
+        if not user:
+             await update.message.reply_text("❌ Foydalanuvchi topilmadi. Iltimos, /start buyrug'ini yuboring.")
+             return ConversationHandler.END
             
         # Get audio for checking using bot service
-        async with AsyncSessionLocal() as db:
-            received_audio = await bot_get_audio_for_checking(user.id, db)
-            
-        # Get sentence for the audio
-        from app.services.sentence_service import get_sentence_by_id
-        async with AsyncSessionLocal() as db:
-            sentence = await get_sentence_by_id(received_audio.sentence_id, db)
+        received_audio = await bot_get_audio_for_checking(user.id)
+
+        # sentence already fetched via fetch_links=True in service
+        sentence_text = received_audio.sentence.text if received_audio.sentence else "Matn topilmadi"
+        sentence_id = received_audio.sentence.id if received_audio.sentence else None
             
         context.user_data['current_audio'] = received_audio
         context.user_data['user_id'] = user.id
         
-        # Debug: log received_audio attributes
-        logger.info(f"Received audio object: {received_audio}")
-        logger.info(f"Received audio attributes: {dir(received_audio)}")
-        logger.info(f"Audio path: {getattr(received_audio, 'audio_path', 'NOT_FOUND')}")
-        
         await update.message.reply_text(
             f"🎧 Quyidagi ovozni tinglab, sifatini baholang:\n\n"
-            f"📝 Matn: '<b><i>{sentence.text}</i></b>'\n\n"
-            f"🎤 Ovoz fayli yuklanmoqda...\n\n",
+            f"📝 Matn: <b><i>{sentence_text}</i></b>\n\n"
+            f"🎤 Ovoz fayli yuklanmoqda...",
             reply_markup=get_verification_keyboard(),
             parse_mode="HTML"
         )
-        
+
         # Send audio file
-        if received_audio.audio_path:  # Fix: use audio_path instead of file_path
+        if received_audio.audio_path:
             try:
-                # Audio faylni yuklash va yuborish
-                audio_path = f"media/{received_audio.audio_path}"  # Fix: use audio_path
-                caption_text = f"📝Matn: '<b><i>{sentence.text}</i></b>'"
-                
-                try:
-                    # Avval voice sifatida yuborishga harakat qilamiz
-                    with open(audio_path, 'rb') as audio_file:
-                        await update.message.reply_voice(
-                            voice=audio_file,
-                            caption=caption_text,
-                            parse_mode="HTML"
-                        )
-                except Exception as voice_error:
-                    error_str = str(voice_error)
-                    # Agar Voice_messages_forbidden bo'lsa, document sifatida yuboramiz
-                    if "Voice_messages_forbidden" in error_str or "Forbidden" in error_str:
-                        logger.warning(f"Voice message forbidden, sending as document: {voice_error}")
-                        with open(audio_path, 'rb') as audio_file:
-                            await update.message.reply_document(
-                                document=audio_file,
-                                caption=caption_text + "\n\n⚠️ Sizning privacy sozlamalaringiz tufayli audio fayl document sifatida yuborildi.",
-                                parse_mode="HTML"
-                            )
-                    else:
-                        raise voice_error
+                audio_path = f"media/{received_audio.audio_path}"
+                caption_text = f"📝 Matn: <b><i>{sentence_text}</i></b>"
+                with open(audio_path, 'rb') as audio_file:
+                    await update.message.reply_voice(
+                        voice=audio_file,
+                        caption=caption_text,
+                        parse_mode="HTML"
+                    )
             except Exception as e:
                 logger.error(f"Audio file send error: {e}")
-                await update.message.reply_text(
-                    "❌ Ovoz faylini yuklashda xatolik yuz berdi.",
-                    reply_markup=get_main_menu_keyboard()
-                )
-                return ConversationHandler.END
+                try:
+                    with open(audio_path, 'rb') as audio_file:
+                        await update.message.reply_document(
+                            document=audio_file,
+                            caption=caption_text + "\n\n⚠️ Hujjat sifatida yuborildi.",
+                            parse_mode="HTML"
+                        )
+                except Exception as doc_e:
+                    logger.error(f"Document send error: {doc_e}")
+                    await update.message.reply_text(
+                        "❌ Ovoz faylini yuklashda xatolik.",
+                        reply_markup=get_main_menu_keyboard()
+                    )
+                    return ConversationHandler.END
         
         return AWAITING_VERIFICATION
             
     except BotServiceError as e:
-        await update.message.reply_text(f"❌ {e.message}", reply_markup=get_main_menu_keyboard())
+        msg = e.message
+        if "no available" in msg.lower() or "topilmadi" in msg.lower():
+            msg = "📭 Hozircha tekshirish uchun ovoz mavjud emas. Keyinroq qaytib keling!"
+        elif "limit" in msg.lower():
+            msg = "✅ Siz belgilangan limitdagi barcha ovozlarni tekshirdingiz!"
+        await update.message.reply_text(msg, reply_markup=get_main_menu_keyboard())
         return ConversationHandler.END
     except Exception as e:
         logger.error(f"Get audio for checking error: {e}")
@@ -119,9 +111,8 @@ async def handle_verification(update: Update, context: ContextTypes.DEFAULT_TYPE
         user_id = context.user_data['user_id']
         received_audio = context.user_data['current_audio']
         
-        # Create checked audio record
-        async with AsyncSessionLocal() as db:
-            await checked_audio_and_update(user_id, received_audio.id, is_correct, db)
+        # Create checked audio record via bot service wrapper
+        await bot_create_checked_audio(received_audio.id, user_id, is_correct)
         
         await update.message.reply_text(
             f"Baholaganingiz uchun rahmat! 👌",
@@ -154,13 +145,20 @@ async def cancel_checking(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle_finish_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handle finish audio"""
     context.user_data.clear()
-    user_telegram_id = str(update.effective_user.id)
-    async with AsyncSessionLocal() as db:
-        [_, _, _, checked_audio_count, _ ] = await get_user_statistic(user_telegram_id, db)
-    await update.message.reply_text(
-        f"Yakunlandi! Siz tekshirgan ovozlar soni {checked_audio_count} ta. Yana ovoz tekshirish uchun '{KEYBOARD_NAMES['CHECK_AUDIO']}' ni bosing.",
-        reply_markup=get_main_menu_keyboard()
-    )
+    try:
+        user_telegram_id = str(update.effective_user.id)
+        stats = await get_user_statistic(user_telegram_id)
+        _, _, _, checkedAudioCount, _ = stats
+        await update.message.reply_text(
+            f"✅ Yakunlandi! Siz tekshirgan ovozlar soni: {checkedAudioCount} ta.\n"
+            f"Yana ovoz tekshirish uchun '{KEYBOARD_NAMES['CHECK_AUDIO']}' ni bosing.",
+            reply_markup=get_main_menu_keyboard()
+        )
+    except Exception:
+        await update.message.reply_text(
+            "✅ Baholash yakunlandi!",
+            reply_markup=get_main_menu_keyboard()
+        )
     return ConversationHandler.END
 
 

@@ -1,11 +1,16 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from beanie import Document
 from datetime import datetime, UTC
-from app.models.base import Base
+from typing import Optional
+from pydantic import Field
 
-class Sentence(Base):
-    __tablename__ = "sentences"
+class Sentence(Document):
+    text: str
+    language: Optional[str] = "uz"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    id = Column(Integer, primary_key=True, index=True)
-    text = Column(Text, nullable=False)
-    language = Column(String, default="uz", nullable=True)
-    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
+    class Settings:
+        name = "sentences"
+        indexes = [
+            "created_at",
+            "language",
+        ]

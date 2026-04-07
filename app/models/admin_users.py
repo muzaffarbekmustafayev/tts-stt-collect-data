@@ -1,22 +1,25 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
-from app.models.base import Base
+from beanie import Document
 from datetime import datetime, UTC
+from typing import Optional
+from pydantic import Field
 from enum import Enum
-from sqlalchemy.dialects.postgresql import ENUM
 
 class AdminRole(str, Enum):
     admin = "admin"
     superadmin = "superadmin"
     checker = "checker"
 
-class AdminUser(Base):
-    __tablename__ = "admin_users"
+class AdminUser(Document):
+    username: str = Field(..., unique=True)
+    password: str
+    is_active: bool = True
+    role: AdminRole = AdminRole.admin
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True, nullable=False)
-    password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    role = Column(ENUM(AdminRole, name='adminrole'), default=AdminRole.admin)
-    created_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
-    updated_at = Column(DateTime(timezone=True), default=datetime.now(UTC))
-    
+    class Settings:
+        name = "admin_users"
+        indexes = [
+            "username",
+            [("is_active", 1), ("role", 1)],
+        ]

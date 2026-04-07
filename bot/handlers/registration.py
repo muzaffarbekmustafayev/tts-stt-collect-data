@@ -1,12 +1,9 @@
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, ConversationHandler
 from app.core.logging import get_logger
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.db.session import AsyncSessionLocal
 from app.schemas.user import UserCreate
-from app.schemas.checked_audio import CheckedAudioCreate
 from app.config import settings
-from app.core.logging import get_logger
+from fastapi import HTTPException
 from bot.services.user_services import get_user_by_telegramId, create_user
 from bot.utils.keyboards import get_main_menu_keyboard, get_gender_keyboard, get_skip_keyboard
 from bot.utils.validation import validate_name, validate_age, validate_info
@@ -24,12 +21,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_telegram_id = str(update.effective_user.id)
     
     try:
-        # Check if user exists using bot service
-        async with AsyncSessionLocal() as db:
-            user = await get_user_by_telegramId(user_telegram_id, db)
+        user = await get_user_by_telegramId(user_telegram_id)
         
         if user:
-            # User exists, show main menu
             reply_markup = get_main_menu_keyboard()
             await update.message.reply_text(
                 f"Assalomu alaykum {user.name}! 👋\n\n"
@@ -38,16 +32,26 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return ConversationHandler.END
         
-        # User doesn't exist, start registration
         await update.message.reply_text(
             "Assalomu alaykum! 👋 TTS-STT botimizga xush kelibsiz!\n\n"
             "Davom etish uchun ro'yxatdan o'tishingiz kerak.\n"
             "Ismingizni kiriting:"
         )
         return REGISTRATION_NAME
-    
+
+    except HTTPException as e:
+        if e.status_code == 404:
+            # User not found - start registration
+            await update.message.reply_text(
+                "Assalomu alaykum! 👋 TTS-STT botimizga xush kelibsiz!\n\n"
+                "Davom etish uchun ro'yxatdan o'tishingiz kerak.\n"
+                "Ismingizni kiriting:"
+            )
+            return REGISTRATION_NAME
+        await update.message.reply_text(f"❌ Xatolik: {e.detail}")
+        return ConversationHandler.END
     except Exception as e:
-        logger.error(f"Start error: {e}")
+        logger.error(f"Start error: {e}", exc_info=True)
         await update.message.reply_text("❌ Server bilan bog'lanishda xatolik.")
         return ConversationHandler.END
 
@@ -133,8 +137,7 @@ async def registration_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
         telegram_id=str(update.effective_user.id),
         info=info
     )
-    async with AsyncSessionLocal() as db:
-        user = await create_user(user_data, db)
+    user = await create_user(user_data)
     
     try:
         if user:
@@ -176,7 +179,6 @@ async def cancel_registration(update: Update, context: ContextTypes.DEFAULT_TYPE
         "Qaytadan urinib ko'ring: /start",
     )
     return ConversationHandler.END
-
 
 
 def register_handlers(app: Application):

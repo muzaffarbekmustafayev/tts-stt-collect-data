@@ -1,6 +1,19 @@
 #custom
 app/audio/
-media/
+media/audio/*.ogg
+
+# Alembic (PostgreSQL migrations - no longer needed)
+alembic/
+alembic.ini
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

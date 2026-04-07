@@ -1,10 +1,8 @@
 from telegram import Update
-from telegram.ext import (
-    Application, CommandHandler, MessageHandler, filters
-)
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
+from telegram.error import Conflict, NetworkError, TimedOut
 from app.config import settings
 from app.core.logging import get_logger
-import asyncio
 
 from bot.handlers.registration import register_handlers
 from bot.handlers.get_information import get_bot_info
@@ -16,53 +14,60 @@ from bot.handlers.getAudioHandler import get_audio_handler
 from bot.handlers.checkAudioHanler import check_audio_handler
 from bot.utils.config import KEYBOARD_NAMES
 
-# Configure logging
 logger = get_logger("bot")
 
-# Set up the telegram bot
-def create_bot_application():
+
+async def error_handler(update: object, context) -> None:
+    """Global error handler for the bot."""
+    error = context.error
+
+    if isinstance(error, Conflict):
+        logger.warning("Bot conflict: another instance is running. Stopping polling.")
+        if context.application.updater:
+            await context.application.updater.stop()
+        return
+
+    if isinstance(error, (NetworkError, TimedOut)):
+        logger.warning(f"Network error (will retry): {error}")
+        return
+
+    logger.error(f"Unhandled bot error: {error}", exc_info=error)
+
+
+def create_bot_application() -> Application:
     """Create and configure the bot application."""
-    application = Application.builder().token(settings.BOT_API_TOKEN).build()
-    
-    # Register ConversationHandlers first (they have higher priority)
+    application = (
+        Application.builder()
+        .token(settings.BOT_API_TOKEN)
+        .connect_timeout(30)
+        .read_timeout(30)
+        .write_timeout(30)
+        .build()
+    )
+
+    # Global error handler
+    application.add_error_handler(error_handler)
+
+    # ConversationHandlers (higher priority - register first)
     register_handlers(application)
     get_audio_handler(application)
     check_audio_handler(application)
     change_profile_handler(application)
-    
-    # Add command handlers
+
+    # Command handlers
     application.add_handler(CommandHandler("info", get_bot_info))
-    application.add_handler(MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['INFO']}$"), get_bot_info))
     application.add_handler(CommandHandler("help", get_bot_help))
     application.add_handler(CommandHandler("statistics", get_bot_statisticHandler))
-    application.add_handler(MessageHandler(filters.Regex(f"^{KEYBOARD_NAMES['STATISTICS']}$"), get_bot_statisticHandler))
-    
-    # Add fallback handler for unrecognized messages LAST (lowest priority)
+
+    # Keyboard button handlers
+    application.add_handler(MessageHandler(
+        filters.Regex(f"^{KEYBOARD_NAMES['INFO']}$"), get_bot_info
+    ))
+    application.add_handler(MessageHandler(
+        filters.Regex(f"^{KEYBOARD_NAMES['STATISTICS']}$"), get_bot_statisticHandler
+    ))
+
+    # Fallback - lowest priority
     application.add_handler(MessageHandler(filters.TEXT, not_understood))
 
     return application
-
-# Bot ishga tushirish funksiyasi
-async def run_bot():
-    """Run the telegram bot in the background"""
-    application = create_bot_application()
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling()
-    
-    try:
-        # Keep the bot running
-        while True:
-            await asyncio.sleep(1)
-    except asyncio.CancelledError:
-        logger.info("Bot task cancelled")
-    except Exception as e:
-        logger.error(f"Error in bot: {str(e)}")
-        raise e
-    finally:
-        await application.updater.stop()
-        await application.stop()
-        await application.shutdown()
-        logger.info("Bot stopped")
-
-     

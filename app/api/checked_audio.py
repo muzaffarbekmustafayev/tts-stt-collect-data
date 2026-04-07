@@ -1,7 +1,5 @@
+from beanie import PydanticObjectId
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
 from app.models.checked_audio import CheckedAudio
 from app.schemas.checked_audio import CheckedAudioCreate, CheckedAudioOut
 from app.core.logging import get_logger
@@ -14,44 +12,65 @@ logger = get_logger("api.checked_audio")
 router = APIRouter(prefix="/checked-audio", tags=["Checked Audio"])
 
 @router.post("/", response_model=CheckedAudioOut)
-async def check_audio(data: CheckedAudioCreate, db: AsyncSession = Depends(get_db)):
+async def check_audio(data: CheckedAudioCreate):
     # checked_by, audio_id, is_correct
     # 1. check user
-    await get_user_by_userId(data.checked_by, db)
+    await get_user_by_userId(data.checked_by)
     # 2. check audio_id
-    await get_audio_by_id(data.audio_id, db)
+    await get_audio_by_id(data.audio_id)
     # 3. check if audio is already checked
-    result = await checked_audio_and_update(data.checked_by, data.audio_id, data.is_correct, db)
-    return result
+    result = await checked_audio_and_update(data.checked_by, data.audio_id, data.is_correct)
+    
+    # Map to schema-compatible dict with string IDs for reliable JSON serialization
+    out_data = result.model_dump(mode="json")
+    out_data["id"] = str(result.id)
+    out_data["audio_id"] = str(result.audio.id) if result.audio else None
+    out_data["checked_by"] = str(result.checked_by.id) if result.checked_by else None
+    return out_data
     
 
 @router.get("/by-audio/{audio_id}", response_model=list[CheckedAudioOut])
-async def get_check_by_audio(audio_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(CheckedAudio).where(CheckedAudio.audio_id == audio_id))
-    check_list = result.scalars().all()
+async def get_check_by_audio(audio_id: PydanticObjectId):
+    check_list = await CheckedAudio.find(CheckedAudio.audio.id == audio_id, fetch_links=True).to_list()
     logger.info(f"Found {len(check_list)} checked audio records for audio {audio_id}")
-    return check_list
+    
+    formatted = []
+    for c in check_list:
+        d = c.model_dump(mode="json")
+        d["id"] = str(c.id)
+        d["audio_id"] = str(c.audio.id) if c.audio else None
+        d["checked_by"] = str(c.checked_by.id) if c.checked_by else None
+        d["checked_by_name"] = c.checked_by.name if c.checked_by else None
+        formatted.append(d)
+    return formatted
 
 
 @router.put("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
-async def update_checked_audio_by_id(id: int, req_checked_audio: CheckedAudioCreate, db: AsyncSession = Depends(get_db)):
-    checked_audio = await get_checked_audio_by_id(id, db)
+async def update_checked_audio_by_id(id: PydanticObjectId, req_checked_audio: CheckedAudioCreate):
+    checked_audio = await get_checked_audio_by_id(id)
     checked_audio.checked_by = req_checked_audio.checked_by
     checked_audio.is_correct = req_checked_audio.is_correct
     checked_audio.comment = req_checked_audio.comment
     checked_audio.status = req_checked_audio.status
-    await db.commit()
-    await db.refresh(checked_audio)
-    await db.commit()
-    return checked_audio
-
+    await checked_audio.save()
+    
+    out_data = checked_audio.model_dump(mode="json")
+    out_data["id"] = str(checked_audio.id)
+    out_data["audio_id"] = str(checked_audio.audio.id) if checked_audio.audio else None
+    out_data["checked_by"] = str(checked_audio.checked_by.id) if checked_audio.checked_by else None
+    return out_data
 
 
 @router.delete("/{id}", response_model=CheckedAudioOut, dependencies=[Depends(get_current_admin_user)])
-async def delete_checked_audio_by_id(id: int, db: AsyncSession = Depends(get_db)):
-    checked_audio = await get_checked_audio_by_id(id, db)
+async def delete_checked_audio_by_id(id: PydanticObjectId):
+    checked_audio = await get_checked_audio_by_id(id)
     if not checked_audio:
         raise HTTPException(status_code=404, detail="Checked audio not found")
-    await db.delete(checked_audio)
-    await db.commit()
-    return checked_audio
+    
+    out_data = checked_audio.model_dump()
+    out_data["id"] = checked_audio.id
+    out_data["audio_id"] = checked_audio.audio.id
+    out_data["checked_by"] = checked_audio.checked_by.id
+    
+    await checked_audio.delete()
+    return out_data
