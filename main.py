@@ -116,7 +116,15 @@ app = FastAPI(
 app.add_middleware(RequestLoggingMiddleware)
 
 origins = [
+    # Asosiy domenlar
     "https://tts-stt-collect-data-admin-panel-five.vercel.app",
+    "https://tts-stt-collect-data-admin-panel.vercel.app",
+
+    # Preview va Git domenlari (Vercel tomonidan berilganlar)
+    "https://tts-stt-collect-data-git-918f11-muzaffarbekmustafayevs-projects.vercel.app",
+    "https://tts-stt-collect-data-admin-panel-hsqjqikfn.vercel.app",
+
+    # Lokal testlar uchun
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
