@@ -20,6 +20,12 @@ import os
 setup_logging()
 logger = get_logger("main")
 
+# Docs faqat development da
+_ENV = os.getenv("APP_ENV", "production")
+_docs_url = "/docs" if _ENV == "development" else None
+_redoc_url = "/redoc" if _ENV == "development" else None
+_openapi_url = "/openapi.json" if _ENV == "development" else None
+
 # Request logging middleware
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -98,12 +104,12 @@ async def lifespan(app: FastAPI):
         logger.info("Application shutdown complete")
 
 app = FastAPI(
-    title="TTS-STT Data Collection API", 
+    title="TTS-STT Data Collection API",
     lifespan=lifespan,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-    redirect_slashes=True  # Trailing slash'ni avtomatik redirect qiladi
+    docs_url=_docs_url,
+    redoc_url=_redoc_url,
+    openapi_url=_openapi_url,
+    redirect_slashes=True
 )
 
 # Add request logging middleware
