@@ -6,7 +6,8 @@ from app.config import AUDIO_DIR
 from app.db.session import init_db, close_db
 from contextlib import asynccontextmanager
 import asyncio
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 from telegram import Update
 from bot.main_bot import create_bot_application
 from fastapi.middleware.cors import CORSMiddleware

@@ -150,11 +150,11 @@ async def get_audios_by_users(
     
     # Sent audios
     sent_audios_list = await ReceivedAudio.find(
-        ReceivedAudio.user.id == user.id,
+        ReceivedAudio.user == user.id,
         ReceivedAudio.status == AudioStatus.approved,
         fetch_links=True
     ).sort(-ReceivedAudio.created_at).to_list()
-    
+
     sent_audios = []
     for ra in sent_audios_list:
         sent_audios.append({
@@ -166,10 +166,10 @@ async def get_audios_by_users(
             "status": ra.status,
             "created_at": ra.created_at.isoformat()
         })
-    
+
     # Checked audios
     checked_audios_list = await CheckedAudio.find(
-        CheckedAudio.checked_by.id == user.id,
+        CheckedAudio.checked_by == user.id,
         CheckedAudio.status == AudioStatus.approved,
         fetch_links=True
     ).sort(-CheckedAudio.checked_at).to_list()

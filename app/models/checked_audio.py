@@ -1,5 +1,6 @@
 from beanie import Document, Link
-from datetime import datetime, UTC
+from datetime import datetime, timezone
+UTC = timezone.utc
 from typing import Optional
 from pydantic import Field
 from app.models.received_audio import AudioStatus, ReceivedAudio

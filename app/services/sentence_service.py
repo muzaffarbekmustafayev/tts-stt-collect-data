@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 from fastapi import HTTPException
 from typing import Optional
 

@@ -1,5 +1,6 @@
 from beanie import PydanticObjectId
-from datetime import datetime, timedelta, timezone, UTC
+from datetime import datetime, timedelta, timezone
+UTC = timezone.utc
 from typing import Optional
 
 from app.models.user import User
