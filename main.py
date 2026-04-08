@@ -110,22 +110,17 @@ app = FastAPI(
 app.add_middleware(RequestLoggingMiddleware)
 
 origins = [
-    "https://tts-stt-collect-data-admin-panel-cyy0et0co.vercel.app",
-    "https://tts-stt-collect-data-admin-panel.vercel.app",
-    "https://tts-stt.uz",
+    "https://tts-stt-collect-data-admin-panel-five.vercel.app",
     "http://localhost:5173",
-    "http://localhost:3000",
     "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-    "*",  # Development uchun - production'da olib tashlang
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Development uchun - barcha origin'larga ruxsat
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Barcha metodlarga ruxsat
-    allow_headers=["*"],  # Barcha header'larga ruxsat
+    allow_methods=["*"],
+    allow_headers=["*"],
     expose_headers=["*"],
 )
 
