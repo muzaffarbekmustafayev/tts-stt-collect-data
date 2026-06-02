@@ -127,6 +127,7 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
     sent_duration_subq = (
         select(func.sum(ReceivedAudio.duration))
         .where(ReceivedAudio.user_id == User.id)
+        .where(ReceivedAudio.status == AudioStatus.approved)
         .correlate(User)
         .scalar_subquery()
     )
@@ -136,6 +137,7 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
         .select_from(CheckedAudio)
         .join(ReceivedAudio, CheckedAudio.audio_id == ReceivedAudio.id)
         .where(CheckedAudio.checked_by == User.id)
+        .where(CheckedAudio.status == AudioStatus.approved)
         .correlate(User)
         .scalar_subquery()
     )
@@ -159,6 +161,8 @@ async def get_user_statistic(user_telegram_id: str, db: AsyncSession) -> tuple[d
         raise HTTPException(status_code=404, detail="User not found")
 
     sent_audio_count, checked_audio_count, sent_audio_duration, checked_audio_duration, created_at = row
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
     regisTime = datetime.now(timezone.utc) - created_at
 
     return regisTime, sent_audio_count, sent_audio_duration or 0, checked_audio_count, checked_audio_duration or 0

@@ -46,9 +46,11 @@ async def auth_admin_user(response: Response, form_data: OAuth2PasswordRequestFo
     )
     
     content = {
-        "token": token
+        "token": token,
+        "role": user.role
+
     }
-    return JSONResponse(content=content, status_code=status.HTTP_200_OK)
+    return JSONResponse(content=content,  status_code=status.HTTP_200_OK)
     
 
 # Get current user
