@@ -6,6 +6,7 @@ from app.config import AUDIO_DIR
 from contextlib import asynccontextmanager
 import asyncio
 from bot.main_bot import create_bot_application
+from app.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -18,7 +19,8 @@ logger = get_logger("main")
 async def lifespan(app: FastAPI):
     # Startup code here
     logger.info("Starting the application")
-    asyncio.create_task(run_bot())
+    if settings.ENABLE_BOT:
+        asyncio.create_task(run_bot())
     yield
     # Shutdown code here
     global bot_application

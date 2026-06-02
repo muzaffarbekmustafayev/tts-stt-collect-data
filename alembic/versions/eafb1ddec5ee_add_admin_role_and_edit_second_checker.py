@@ -20,10 +20,22 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    # Add columns to checked_audio
-    op.add_column('checked_audio', sa.Column('second_checker_id', sa.Integer(), sa.ForeignKey('admin_users.id', ondelete='SET NULL'), nullable=True))
-    op.add_column('checked_audio', sa.Column('second_check_result', sa.Boolean(), nullable=True))
-    op.add_column('checked_audio', sa.Column('second_checked_at', sa.DateTime(timezone=True), nullable=True))
+    # Add columns to checked_audio (IF NOT EXISTS to handle already-applied columns)
+    op.execute("""
+        DO $$ BEGIN
+            ALTER TABLE checked_audio ADD COLUMN second_checker_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL;
+        EXCEPTION WHEN duplicate_column THEN null; END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            ALTER TABLE checked_audio ADD COLUMN second_check_result BOOLEAN;
+        EXCEPTION WHEN duplicate_column THEN null; END $$;
+    """)
+    op.execute("""
+        DO $$ BEGIN
+            ALTER TABLE checked_audio ADD COLUMN second_checked_at TIMESTAMPTZ;
+        EXCEPTION WHEN duplicate_column THEN null; END $$;
+    """)
     
     # Create the Enum type if it doesn't exist
     op.execute("""

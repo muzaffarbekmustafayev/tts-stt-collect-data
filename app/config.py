@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str # secret key for jwt
     # ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440 # access token expire minutes
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 800000000 # access token expire minutes
+    ENABLE_BOT: bool = True
     # other settings
     class Config:
         env_file = ".env"

@@ -19,7 +19,6 @@ from app.services.bot_services import (
     BotServiceError
 )
 from app.api.received_audio import ensure_directories_exist, UPLOAD_DIR
-from pydub import AudioSegment
 import shutil
 import uuid
 
